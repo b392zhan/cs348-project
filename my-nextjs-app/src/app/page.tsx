@@ -23,6 +23,21 @@ function Home() {
 export default function Component() {
   const [activeFilter, setActiveFilter] = useState("H")
   const [activeNavItem, setActiveNavItem] = useState("Library")
+  const [showAddBookModal, setShowAddBookModal] = useState(false)
+  const [books, setBooks] = useState([
+    {
+      id: 1,
+      title: "Harry Potter and The Cursed Child",
+      author: "J.K. Rowling",
+      coverUrl: "/placeholder.svg?height=192&width=128",
+      letter: "H",
+    },
+  ])
+  const [newBook, setNewBook] = useState({
+    title: "",
+    author: "",
+    coverUrl: "/placeholder.svg?height=192&width=128",
+  })
 
   const navItems = [
     "Library",
@@ -64,6 +79,35 @@ export default function Component() {
     "Z",
     "ALL",
   ]
+
+  const handleAddBook = (e) => {
+    e.preventDefault()
+
+    // Get the first letter of the book title for filtering
+    const firstLetter = newBook.title.charAt(0).toUpperCase()
+
+    // Create new book object
+    const bookToAdd = {
+      id: books.length + 1,
+      title: newBook.title,
+      author: newBook.author,
+      coverUrl: newBook.coverUrl || "/placeholder.svg?height=192&width=128",
+      letter: firstLetter,
+    }
+
+    // Add book to the list
+    setBooks([...books, bookToAdd])
+
+    // Reset form and close modal
+    setNewBook({
+      title: "",
+      author: "",
+      coverUrl: "/placeholder.svg?height=192&width=128",
+    })
+    setShowAddBookModal(false)
+
+    // Keep the current filter - don't automatically change it
+  }
 
   const styles = {
     container: {
@@ -328,6 +372,117 @@ export default function Component() {
       color: "white",
       fontSize: "24px",
       transition: "all 0.2s",
+      zIndex: 10,
+    },
+    // Modal styles
+    modalOverlay: {
+      position: "fixed" as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 100,
+    },
+    modalContainer: {
+      backgroundColor: "white",
+      borderRadius: "8px",
+      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+      width: "90%",
+      maxWidth: "500px",
+      padding: "24px",
+      position: "relative" as const,
+    },
+    modalHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "24px",
+    },
+    modalTitle: {
+      fontSize: "20px",
+      fontWeight: "600",
+      color: "#03151e",
+      margin: 0,
+    },
+    closeButton: {
+      background: "none",
+      border: "none",
+      fontSize: "24px",
+      cursor: "pointer",
+      color: "#666666",
+    },
+    form: {
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "16px",
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "8px",
+    },
+    label: {
+      fontSize: "14px",
+      fontWeight: "500",
+      color: "#03151e",
+    },
+    input: {
+      padding: "10px 12px",
+      border: "1px solid #bbbbbb",
+      borderRadius: "6px",
+      fontSize: "14px",
+      outline: "none",
+    },
+    formActions: {
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: "12px",
+      marginTop: "24px",
+    },
+    cancelButton: {
+      padding: "10px 16px",
+      border: "1px solid #bbbbbb",
+      borderRadius: "6px",
+      backgroundColor: "white",
+      cursor: "pointer",
+      fontSize: "14px",
+    },
+    submitButton: {
+      padding: "10px 16px",
+      border: "1px solid #4bc1d2",
+      borderRadius: "6px",
+      backgroundColor: "#4bc1d2",
+      color: "white",
+      cursor: "pointer",
+      fontSize: "14px",
+    },
+    previewSection: {
+      display: "flex",
+      flexDirection: "column" as const,
+      alignItems: "center",
+      marginTop: "16px",
+    },
+    previewTitle: {
+      fontSize: "14px",
+      fontWeight: "500",
+      color: "#03151e",
+      marginBottom: "12px",
+    },
+    previewCover: {
+      width: "100px",
+      height: "150px",
+      borderRadius: "6px",
+      overflow: "hidden",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    },
+    previewImage: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover" as const,
     },
   }
 
@@ -337,8 +492,6 @@ export default function Component() {
       <div style={styles.sidebar}>
         <div style={styles.logo}>
           <h1 style={styles.logoText}>SHELFIE</h1>
-          <Home/>   
-          {/* Connect to Flask test above */}
         </div>
 
         <nav style={styles.nav}>
@@ -446,24 +599,27 @@ export default function Component() {
 
           {/* Active Letter Display */}
           <div style={styles.activeLetterSection}>
-            <h3 style={styles.activeLetter}>H</h3>
+            <h3 style={styles.activeLetter}>{activeFilter === "ALL" ? "All Books" : activeFilter}</h3>
           </div>
 
           {/* Book Grid */}
           <div style={styles.bookGrid}>
-            <div style={styles.bookCard}>
-              <div style={styles.bookCover}>
-                <img
-                  src="/placeholder.svg?height=192&width=128"
-                  alt="Harry Potter and The Cursed Child"
-                  style={styles.bookImage}
-                />
-              </div>
-              <div style={styles.bookInfo}>
-                <h4 style={styles.bookTitle}>Harry Potter and The Cursed Child</h4>
-                <p style={styles.bookAuthor}>J.K. Rowling</p>
-              </div>
-            </div>
+            {books
+              .filter((book) => {
+                if (activeFilter === "ALL") return true
+                return book.letter === activeFilter
+              })
+              .map((book) => (
+                <div key={book.id} style={styles.bookCard}>
+                  <div style={styles.bookCover}>
+                    <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
+                  </div>
+                  <div style={styles.bookInfo}>
+                    <h4 style={styles.bookTitle}>{book.title}</h4>
+                    <p style={styles.bookAuthor}>{book.author}</p>
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
       </div>
@@ -471,6 +627,7 @@ export default function Component() {
       {/* Floating Action Button */}
       <button
         style={styles.fab}
+        onClick={() => setShowAddBookModal(true)}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = "#3da8b7"
         }}
@@ -480,7 +637,89 @@ export default function Component() {
       >
         +
       </button>
+
+      {/* Add Book Modal */}
+      {showAddBookModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowAddBookModal(false)}>
+          <div style={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>Add New Book</h3>
+              <button style={styles.closeButton} onClick={() => setShowAddBookModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <form style={styles.form} onSubmit={handleAddBook}>
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="bookTitle">
+                  Book Title
+                </label>
+                <input
+                  id="bookTitle"
+                  type="text"
+                  style={styles.input}
+                  value={newBook.title}
+                  onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="bookAuthor">
+                  Author
+                </label>
+                <input
+                  id="bookAuthor"
+                  type="text"
+                  style={styles.input}
+                  value={newBook.author}
+                  onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="coverUrl">
+                  Cover Image URL (optional)
+                </label>
+                <input
+                  id="coverUrl"
+                  type="text"
+                  style={styles.input}
+                  value={newBook.coverUrl}
+                  onChange={(e) => setNewBook({ ...newBook, coverUrl: e.target.value })}
+                  placeholder="/placeholder.svg?height=192&width=128"
+                />
+              </div>
+
+              {/* Preview section */}
+              <div style={styles.previewSection}>
+                <h4 style={styles.previewTitle}>Cover Preview</h4>
+                <div style={styles.previewCover}>
+                  <img
+                    src={newBook.coverUrl || "/placeholder.svg?height=192&width=128"}
+                    alt="Book cover preview"
+                    style={styles.previewImage}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg?height=192&width=128"
+                      setNewBook({ ...newBook, coverUrl: "/placeholder.svg?height=192&width=128" })
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.formActions}>
+                <button type="button" style={styles.cancelButton} onClick={() => setShowAddBookModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" style={styles.submitButton}>
+                  Add Book
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
