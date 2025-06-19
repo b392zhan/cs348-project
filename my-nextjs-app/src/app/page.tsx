@@ -41,7 +41,8 @@ export default function Component() {
     pageLength: "",
     coverUrl: "",
   });
-  
+
+
 
   const navItems = [
     "Library",
@@ -86,9 +87,9 @@ export default function Component() {
 
   const handleAddBook = async (e) => {
     e.preventDefault();
-  
+
     const firstLetter = newBook.title.charAt(0).toUpperCase();
-  
+
     const bookToAdd = {
       id: books.length + 1,
       title: newBook.title,
@@ -96,7 +97,7 @@ export default function Component() {
       coverUrl: newBook.coverUrl || "/placeholder.svg?height=192&width=128",
       letter: firstLetter,
     };
-  
+
     try {
       const response = await fetch("http://127.0.0.1:5000/api/books", {
         method: "POST",
@@ -112,7 +113,7 @@ export default function Component() {
           cover_url: newBook.coverUrl, // sent for future use
         }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Failed to send book to backend:", errorData);
@@ -123,9 +124,9 @@ export default function Component() {
     } catch (error) {
       console.error("❌ Error sending book to backend:", error);
     }
-  
+
     setBooks([...books, bookToAdd]);
-  
+
     setNewBook({
       title: "",
       author: "",
@@ -134,10 +135,38 @@ export default function Component() {
       pageLength: "",
       coverUrl: "/placeholder.svg?height=192&width=128",
     });
-  
+
     setShowAddBookModal(false);
   };
-  
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+
+  const handleSearch = async () => {
+    try {
+      if (!searchQuery.trim()) {
+        // Optional: fetch all books or show message when search is empty
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:5000/api/books/search?query=${encodeURIComponent(searchQuery)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setBooks(data.books);
+        setActiveFilter("ALL"); // Reset alphabet filter when searching
+      } else {
+        console.error("Search failed:", response.status);
+        setBooks([]); // Clear results if search fails
+      }
+    } catch (error) {
+      console.error("Error searching books:", error);
+      setBooks([]); // Clear results on error
+    }
+  };
+
 
 
   const styles = {
@@ -212,6 +241,8 @@ export default function Component() {
       backgroundColor: "#f6f6f6",
       fontSize: "14px",
       outline: "none",
+      color: "#333333"
+
     },
     searchIcon: {
       position: "absolute" as const,
@@ -317,6 +348,7 @@ export default function Component() {
       backgroundColor: "#f6f6f6",
       fontSize: "16px",
       outline: "none",
+      color: "#333333"
     },
     alphabetFilter: {
       display: "flex",
@@ -424,11 +456,11 @@ export default function Component() {
       boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
       width: "90%",
       maxWidth: "500px",
-      maxHeight: "80vh", 
-      overflowY: "auto",  
-      padding: "16px",   
+      maxHeight: "80vh",
+      overflowY: "auto",
+      padding: "16px",
       position: "relative" as const,
-    },    
+    },
     modalHeader: {
       display: "flex",
       justifyContent: "space-between",
@@ -464,7 +496,7 @@ export default function Component() {
       color: "#03151e",
     },
     input: {
-      padding: "8px 10px", 
+      padding: "8px 10px",
       border: "1px solid #bbbbbb",
       borderRadius: "6px",
       fontSize: "14px",
@@ -598,10 +630,46 @@ export default function Component() {
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar
           <div style={styles.bookSearchContainer}>
             <div style={styles.searchIcon}>🔍</div>
             <input type="text" placeholder="Search book title" style={styles.bookSearchInput} />
+          </div> */}
+
+          <div style={{
+            position: 'relative',
+            marginBottom: '24px',
+            maxWidth: '600px'
+          }}>
+            <div style={styles.bookSearchContainer}>
+              <div style={styles.searchIcon}>🔍</div>
+              <input
+                type="text"
+                placeholder="Search book title"
+                style={styles.bookSearchInput}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+
+            {searchQuery && books.length === 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                padding: '10px',
+                backgroundColor: '#fff',
+                border: '1px solid #eee',
+                borderRadius: '0 0 6px 6px',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                zIndex: 10,
+                color: "#333333"
+              }}>
+                No books found with the exact title "{searchQuery}"
+              </div>
+            )}
           </div>
 
           {/* Alphabet Filter */}
@@ -781,7 +849,7 @@ export default function Component() {
                     // }}
                     onError={(e) => {
                       e.currentTarget.src = "/placeholder.svg?height=192&width=128"
-                    }}                    
+                    }}
                   />
                 </div>
               </div>
