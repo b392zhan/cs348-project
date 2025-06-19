@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { useEffect, useState } from "react";
 
@@ -36,15 +36,19 @@ export default function Component() {
   const [newBook, setNewBook] = useState({
     title: "",
     author: "",
-    coverUrl: "/placeholder.svg?height=192&width=128",
-  })
+    authorDob: "",
+    issue: "",
+    pageLength: "",
+    coverUrl: "",
+  });
+  
 
   const navItems = [
     "Library",
     "My Collection",
     "Wish List",
-    "Table 3",
-    "Table 4",
+    "Table 1",
+    "Table 2",
     "Configurations",
     "Support",
     "Settings",
@@ -80,34 +84,61 @@ export default function Component() {
     "ALL",
   ]
 
-  const handleAddBook = (e) => {
-    e.preventDefault()
-
-    // Get the first letter of the book title for filtering
-    const firstLetter = newBook.title.charAt(0).toUpperCase()
-
-    // Create new book object
+  const handleAddBook = async (e) => {
+    e.preventDefault();
+  
+    const firstLetter = newBook.title.charAt(0).toUpperCase();
+  
     const bookToAdd = {
       id: books.length + 1,
       title: newBook.title,
       author: newBook.author,
       coverUrl: newBook.coverUrl || "/placeholder.svg?height=192&width=128",
       letter: firstLetter,
+    };
+  
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/books", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: newBook.title,
+          issue: newBook.issue,
+          page_length: parseInt(newBook.pageLength),
+          author: newBook.author,
+          author_dob: newBook.authorDob,
+          cover_url: newBook.coverUrl, // sent for future use
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to send book to backend:", errorData);
+      } else {
+        const responseData = await response.json();
+        console.log("✅ Book sent to backend:", responseData);
+      }
+    } catch (error) {
+      console.error("❌ Error sending book to backend:", error);
     }
-
-    // Add book to the list
-    setBooks([...books, bookToAdd])
-
-    // Reset form and close modal
+  
+    setBooks([...books, bookToAdd]);
+  
     setNewBook({
       title: "",
       author: "",
+      authorDob: "",
+      issue: "",
+      pageLength: "",
       coverUrl: "/placeholder.svg?height=192&width=128",
-    })
-    setShowAddBookModal(false)
+    });
+  
+    setShowAddBookModal(false);
+  };
+  
 
-    // Keep the current filter - don't automatically change it
-  }
 
   const styles = {
     container: {
@@ -393,9 +424,11 @@ export default function Component() {
       boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
       width: "90%",
       maxWidth: "500px",
-      padding: "24px",
+      maxHeight: "80vh", 
+      overflowY: "auto",  
+      padding: "16px",   
       position: "relative" as const,
-    },
+    },    
     modalHeader: {
       display: "flex",
       justifyContent: "space-between",
@@ -431,7 +464,7 @@ export default function Component() {
       color: "#03151e",
     },
     input: {
-      padding: "10px 12px",
+      padding: "8px 10px", 
       border: "1px solid #bbbbbb",
       borderRadius: "6px",
       fontSize: "14px",
@@ -440,11 +473,11 @@ export default function Component() {
     formActions: {
       display: "flex",
       justifyContent: "flex-end",
-      gap: "12px",
-      marginTop: "24px",
+      gap: "8px", // was 12px
+      marginTop: "16px", // was 24px
     },
     cancelButton: {
-      padding: "10px 16px",
+      padding: "8px 14px", // was 10px 16px
       border: "1px solid #bbbbbb",
       borderRadius: "6px",
       backgroundColor: "white",
@@ -452,7 +485,7 @@ export default function Component() {
       fontSize: "14px",
     },
     submitButton: {
-      padding: "10px 16px",
+      padding: "8px 14px", // was 10px 16px
       border: "1px solid #4bc1d2",
       borderRadius: "6px",
       backgroundColor: "#4bc1d2",
@@ -650,6 +683,8 @@ export default function Component() {
             </div>
 
             <form style={styles.form} onSubmit={handleAddBook}>
+
+              {/* Book Title */}
               <div style={styles.formGroup}>
                 <label style={styles.label} htmlFor="bookTitle">
                   Book Title
@@ -664,6 +699,33 @@ export default function Component() {
                 />
               </div>
 
+              {/* Issue */}
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="bookIssue">Issue</label>
+                <input
+                  id="bookIssue"
+                  type="text"
+                  style={styles.input}
+                  value={newBook.issue}
+                  onChange={(e) => setNewBook({ ...newBook, issue: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Page Length */}
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="pageLength">Page Length</label>
+                <input
+                  id="pageLength"
+                  type="number"
+                  style={styles.input}
+                  value={newBook.pageLength}
+                  onChange={(e) => setNewBook({ ...newBook, pageLength: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Author Name */}
               <div style={styles.formGroup}>
                 <label style={styles.label} htmlFor="bookAuthor">
                   Author
@@ -674,6 +736,19 @@ export default function Component() {
                   style={styles.input}
                   value={newBook.author}
                   onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Author DOB */}
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="authorDob">Author Date of Birth</label>
+                <input
+                  id="authorDob"
+                  type="date"
+                  style={styles.input}
+                  value={newBook.authorDob}
+                  onChange={(e) => setNewBook({ ...newBook, authorDob: e.target.value })}
                   required
                 />
               </div>
@@ -700,10 +775,13 @@ export default function Component() {
                     src={newBook.coverUrl || "/placeholder.svg?height=192&width=128"}
                     alt="Book cover preview"
                     style={styles.previewImage}
+                    // onError={(e) => {
+                    //   e.currentTarget.src = "/placeholder.svg?height=192&width=128"
+                    //   setNewBook({ ...newBook, coverUrl: "/placeholder.svg?height=192&width=128" })
+                    // }}
                     onError={(e) => {
                       e.currentTarget.src = "/placeholder.svg?height=192&width=128"
-                      setNewBook({ ...newBook, coverUrl: "/placeholder.svg?height=192&width=128" })
-                    }}
+                    }}                    
                   />
                 </div>
               </div>

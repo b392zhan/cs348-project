@@ -38,6 +38,8 @@ def init_db():
                 email VARCHAR(100) NOT NULL UNIQUE
             )
         """)
+        
+
         db.commit()
         print("✅ Database tables initialized")
     except Error as err:
@@ -234,6 +236,145 @@ def not_found_error(error):
 def internal_error(error):
     return jsonify({"status": "error", "message": "Internal server error"}), 500
 
+# @app.route('/api/books', methods=['POST'])
+# def log_book_from_ui():
+#     try:
+#         data = request.get_json()
+#         title = data.get('title')
+#         author = data.get('author')
+#         cover_url = data.get('coverUrl')
+
+#         print("📘 Book added from UI:")
+#         print(f"    Title: {title}")
+#         print(f"    Author: {author}")
+#         print(f"    Cover URL: {cover_url}")
+
+#         return jsonify({
+#             "status": "success",
+#             "message": "Book received on backend"
+#         }), 200
+#     except Exception as e:
+#         print(f"❌ Error receiving book data: {e}")
+#         return jsonify({
+#             "status": "error",
+#             "message": str(e)
+#         }), 500
+
+# # @app.route('/api/books', methods=['POST'])
+# # def log_book_from_ui():
+#     try:
+#         data = request.get_json()
+#         title = data.get('title')
+#         author_name = data.get('author')
+#         cover_url = data.get('coverUrl')
+
+#         if not title or not author_name:
+#             return jsonify({"status": "error", "message": "Title and author are required"}), 400
+
+#         db = get_db()
+#         cursor = db.cursor()
+
+#         # Step 1: Insert author if not exists
+#         cursor.execute("SELECT id FROM authors WHERE name = %s", (author_name,))
+#         author = cursor.fetchone()
+#         if author:
+#             author_id = author[0]
+#         else:
+#             cursor.execute("INSERT INTO authors (name) VALUES (%s)", (author_name,))
+#             db.commit()
+#             author_id = cursor.lastrowid
+
+#         # Step 2: Insert book
+#         cursor.execute(
+#             "INSERT INTO books (title, author_id, cover_url) VALUES (%s, %s, %s)",
+#             (title, author_id, cover_url)
+#         )
+#         db.commit()
+#         book_id = cursor.lastrowid
+
+#         cursor.close()
+
+#         print(f"📚 New book added: '{title}' by {author_name} (ID: {book_id})")
+
+#         return jsonify({
+#             "status": "success",
+#             "message": "Book added to database",
+#             "book_id": book_id
+#         }), 201
+
+#     except Error as err:
+#         print(f"❌ MySQL Error: {err}")
+#         return jsonify({"status": "error", "message": str(err)}), 500
+#     except Exception as e:
+#         print(f"❌ Unexpected Error: {e}")
+#         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/books', methods=['POST'])
+def log_book_from_ui():
+    try:
+        data = request.get_json()
+
+        title = data.get('title')
+        issue = data.get('issue')
+        page_length = data.get('page_length')
+        cover_url = data.get('cover_url')
+        author_name = data.get('author')
+        author_dob = data.get('author_dob')
+    
+
+        if not title or not author_name:
+            return jsonify({"status": "error", "message": "Title and author are required"}), 400
+
+        db = get_db()
+        cursor = db.cursor()
+
+        # Step 1: Ensure author exists (check by name only for now)
+        cursor.execute("SELECT author_id FROM Author WHERE name = %s", (author_name,))
+        author_row = cursor.fetchone()
+
+        if author_row:
+            author_id = author_row[0]
+        else:
+            cursor.execute(
+                "INSERT INTO Author (name, date_of_birth) VALUES (%s, %s)",
+                (author_name, author_dob or None)
+            )
+            author_id = cursor.lastrowid
+
+        # Step 2: Insert book
+        cursor.execute(
+            """
+            INSERT INTO Book (title, issue, page_length, cover_url)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (title, issue or None, page_length or None, cover_url or None)
+        )
+        book_id = cursor.lastrowid
+
+        # Step 3: Link in WrittenBy
+        cursor.execute(
+            "INSERT INTO WrittenBy (book_id, author_id) VALUES (%s, %s)",
+            (book_id, author_id)
+        )
+
+        db.commit()
+        cursor.close()
+
+        return jsonify({
+            "status": "success",
+            "message": "Book and author saved",
+            "book_id": book_id,
+            "author_id": author_id
+        }), 201
+
+    except Error as err:
+        print(f"❌ Database error: {err}")
+        return jsonify({"status": "error", "message": str(err)}), 500
+    except Exception as e:
+        print(f"❌ Server error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Starting Flask server...")
     print("Testing database connection...")
@@ -268,4 +409,3 @@ if __name__ == "__main__":
     print("\nServer starting on http://localhost:5000")
     
     app.run(port=5000, debug=True)
-
