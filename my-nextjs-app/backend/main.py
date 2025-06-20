@@ -427,6 +427,80 @@ def search_books():
     except Exception as e:
         print(f"❌ Server error during search: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+    
+@app.route('/api/books/sort', methods=['GET'])
+def sort_books():
+    try:
+        search_query = request.args.get('query', '').strip()
+        sort_order = request.args.get('sort', 'asc').lower()
+
+        # Default to ASC if invalid input
+        if sort_order not in ('asc', 'desc'):
+            sort_order = 'asc'
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        if not search_query:
+            # If no search query, return all books sorted
+            cursor.execute(f"""
+                SELECT 
+                    b.book_id, 
+                    b.title, 
+                    b.issue, 
+                    b.page_length,
+                    GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors,
+                    b.cover_url
+                FROM Book b
+                LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+                LEFT JOIN Author a ON wb.author_id = a.author_id
+                GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
+                ORDER BY b.title {sort_order.upper()}
+            """)
+        else:
+            # If search query provided
+            cursor.execute(f"""
+                SELECT 
+                    b.book_id, 
+                    b.title, 
+                    b.issue, 
+                    b.page_length,
+                    GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors,
+                    b.cover_url
+                FROM Book b
+                LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+                LEFT JOIN Author a ON wb.author_id = a.author_id
+                WHERE b.title = %s
+                GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
+                ORDER BY b.title {sort_order.upper()}
+            """, (search_query,))
+
+        books = cursor.fetchall()
+        cursor.close()
+
+        formatted_books = []
+        for book in books:
+            formatted_books.append({
+                "id": book["book_id"],
+                "title": book["title"],
+                "author": book["authors"] or "Unknown Author",
+                "coverUrl": book["cover_url"] or "/placeholder.svg?height=192&width=128",
+                "letter": book["title"][0].upper() if book["title"] else "A"
+            })
+
+        return jsonify({
+            "status": "success",
+            "books": formatted_books
+        })
+
+    except Error as err:
+        print(f"❌ Database error during search: {err}")
+        return jsonify({"status": "error", "message": str(err)}), 500
+    except Exception as e:
+        print(f"❌ Server error during search: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == "__main__":
     print("Starting Flask server...")

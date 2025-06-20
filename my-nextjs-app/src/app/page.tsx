@@ -12,6 +12,11 @@ function Home() {
       .catch(() => setMessage("Failed to fetch"));
   }, []);
 
+  useEffect(() => {
+    fetchBooks('', sortOrder)
+  }, [])
+  
+
   return (
     <main>
       <h1>Flask says:</h1>
@@ -167,6 +172,23 @@ export default function Component() {
     }
   };
 
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+
+  const fetchBooks = async (query = '', sort = 'asc') => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/books/sort?query=${encodeURIComponent(query)}&sort=${sort}`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        setBooks(data.books);
+      } else {
+        console.error('Failed to fetch books:', data);
+      }
+    } catch (err) {
+      console.error('Error fetching books:', err);
+    }
+  };
+  
+  
 
 
   const styles = {
@@ -615,10 +637,17 @@ export default function Component() {
             </div>
 
             <div style={styles.controls}>
-              <button style={styles.button}>
-                <span>⊞</span>
-                Display
+              <button
+                style={styles.button}
+                onClick={() => {
+                  const newOrder = sortOrder === 'asc' ? 'desc' : 'asc'
+                  setSortOrder(newOrder)
+                  fetchBooks(searchQuery, newOrder)
+                }}
+              >
+                Title {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
+
               <button style={styles.button}>
                 Title
                 <span>›</span>
