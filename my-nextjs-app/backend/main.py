@@ -320,51 +320,62 @@ def log_book_from_ui():
         cover_url = data.get('cover_url')
         author_name = data.get('author')
         author_dob = data.get('author_dob')
-    
+        publisher_name = data.get('publisher')  # This must come from frontend now
 
-        if not title or not author_name:
-            return jsonify({"status": "error", "message": "Title and author are required"}), 400
+        if not title or not author_name or not publisher_name:
+            return jsonify({"status": "error", "message": "Title, author, and publisher are required"}), 400
 
         db = get_db()
         cursor = db.cursor()
 
-        # Step 1: Ensure author exists (check by name only for now)
-        cursor.execute("SELECT author_id FROM Author WHERE name = %s", (author_name,))
-        author_row = cursor.fetchone()
-
-        if author_row:
-            author_id = author_row[0]
-        else:
-            cursor.execute(
-                "INSERT INTO Author (name, date_of_birth) VALUES (%s, %s)",
-                (author_name, author_dob or None)
+        # Step 1: Insert author if not exists
+        cursor.execute("""
+            INSERT INTO Author (name, date_of_birth)
+            SELECT %s, %s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Author WHERE name = %s
             )
-            author_id = cursor.lastrowid
+        """, (author_name, author_dob or None, author_name))
 
-        # Step 2: Insert book
-        cursor.execute(
-            """
+        # Step 2: Get author_id
+        cursor.execute("SELECT author_id FROM Author WHERE name = %s", (author_name,))
+        author_id = cursor.fetchone()[0]
+
+        # Step 3: Insert publisher if not exists
+        cursor.execute("""
+            INSERT INTO Publisher (name)
+            SELECT %s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Publisher WHERE name = %s
+            )
+        """, (publisher_name, publisher_name))
+
+        # Step 4: Get publisher_id
+        cursor.execute("SELECT publisher_id FROM Publisher WHERE name = %s", (publisher_name,))
+        publisher_id = cursor.fetchone()[0]
+
+        # Step 5: Insert book
+        cursor.execute("""
             INSERT INTO Book (title, issue, page_length, cover_url)
             VALUES (%s, %s, %s, %s)
-            """,
-            (title, issue or None, page_length or None, cover_url or None)
-        )
+        """, (title, issue or None, page_length or None, cover_url or None))
         book_id = cursor.lastrowid
 
-        # Step 3: Link in WrittenBy
-        cursor.execute(
-            "INSERT INTO WrittenBy (book_id, author_id) VALUES (%s, %s)",
-            (book_id, author_id)
-        )
+        # Step 6: Insert into WrittenBy
+        cursor.execute("INSERT INTO WrittenBy (book_id, author_id) VALUES (%s, %s)", (book_id, author_id))
+
+        # Step 7: Insert into PublishedBy
+        cursor.execute("INSERT INTO PublishedBy (book_id, publisher_id) VALUES (%s, %s)", (book_id, publisher_id))
 
         db.commit()
         cursor.close()
 
         return jsonify({
             "status": "success",
-            "message": "Book and author saved",
+            "message": "Book, author, and publisher saved",
             "book_id": book_id,
-            "author_id": author_id
+            "author_id": author_id,
+            "publisher_id": publisher_id
         }), 201
 
     except Error as err:

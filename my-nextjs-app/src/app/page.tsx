@@ -15,7 +15,7 @@ function Home() {
   useEffect(() => {
     fetchBooks('', sortOrder)
   }, [])
-  
+
 
   return (
     <main>
@@ -45,7 +45,9 @@ export default function Component() {
     issue: "",
     pageLength: "",
     coverUrl: "",
+    publisher: "",  // <-- ADD THIS
   });
+
 
 
 
@@ -115,7 +117,8 @@ export default function Component() {
           page_length: parseInt(newBook.pageLength),
           author: newBook.author,
           author_dob: newBook.authorDob,
-          cover_url: newBook.coverUrl, // sent for future use
+          cover_url: newBook.coverUrl,
+          publisher: newBook.publisher,  // <-- REQUIRED BY BACKEND
         }),
       });
 
@@ -139,10 +142,12 @@ export default function Component() {
       issue: "",
       pageLength: "",
       coverUrl: "/placeholder.svg?height=192&width=128",
+      publisher: "",  // reset field
     });
 
     setShowAddBookModal(false);
   };
+
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -187,8 +192,8 @@ export default function Component() {
       console.error('Error fetching books:', err);
     }
   };
-  
-  
+
+
 
 
   const styles = {
@@ -849,6 +854,21 @@ export default function Component() {
                   required
                 />
               </div>
+              {/* Publisher */}
+              <div style={styles.formGroup}>
+                <label style={styles.label} htmlFor="publisher">
+                  Publisher
+                </label>
+                <input
+                  id="publisher"
+                  type="text"
+                  style={styles.input}
+                  value={newBook.publisher}
+                  onChange={(e) => setNewBook({ ...newBook, publisher: e.target.value })}
+                  required
+                />
+              </div>
+
 
               <div style={styles.formGroup}>
                 <label style={styles.label} htmlFor="coverUrl">
