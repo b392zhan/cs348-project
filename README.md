@@ -30,3 +30,7 @@ A search bar at the top of the interface allows users to search for books by nam
 
 Every book entry includes a star icon in the UI to allow users to "favourite" or highlight books. Newly created books default to an unselected (unstarred) state. When a user clicks the star, it toggles the starred boolean column in the Book table (or a separate StarredBooks table if modeled that way). This helps users quickly identify their most treasured reads.
 
+5. 📖 Book Length
+
+Books in the library can be filtered by their length and categorized into three groups. Books are either Short Stories, Novels, or epics. When a user uses the filter, they can quickly know how long a read it could be.
+
