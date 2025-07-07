@@ -32,5 +32,12 @@ Every book entry includes a star icon in the UI to allow users to "favourite" or
 
 5. 📖 Book Length
 
-Books in the library can be filtered by their length and categorized into three groups. Books are either Short Stories, Novels, or epics. When a user uses the filter, they can quickly know how long a read it could be.
+Books in the library can be filtered by their page length. When a user uses this filter, they can quickly know how long it would take to read these books, as they now know the page length and can better estimate their reading time.
+
+## How to Generate Production Data
+
+
+
+
+
 
