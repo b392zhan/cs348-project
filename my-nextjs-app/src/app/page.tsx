@@ -26,16 +26,16 @@ function Home() {
 }
 
 export default function Component() {
-  const [activeFilter, setActiveFilter] = useState("H")
+  const [activeFilter, setActiveFilter] = useState("A")
   const [activeNavItem, setActiveNavItem] = useState("Library")
   const [showAddBookModal, setShowAddBookModal] = useState(false)
   const [books, setBooks] = useState([
     {
-      id: 1,
-      title: "Harry Potter and The Cursed Child",
-      author: "J.K. Rowling",
-      coverUrl: "/placeholder.svg?height=192&width=128",
-      letter: "H",
+      // id: 1,
+      // title: "Harry Potter and The Cursed Child",
+      // author: "J.K. Rowling",
+      // coverUrl: "/placeholder.svg?height=192&width=128",
+      // letter: "H",
     },
   ])
   const [newBook, setNewBook] = useState({
@@ -618,8 +618,8 @@ export default function Component() {
         {/* Header */}
         <header style={styles.header}>
           <div style={styles.searchContainer}>
-            <div style={styles.searchIcon}>🔍</div>
-            <input type="text" placeholder="Search" style={styles.searchInput} />
+            {/* <div style={styles.searchIcon}>🔍</div> */}
+            {/* <input type="text" placeholder="Search" style={styles.searchInput} /> */}
           </div>
 
           <div style={styles.userSection}>
@@ -634,7 +634,7 @@ export default function Component() {
           {/* Section Header */}
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>
-              <h2 style={styles.title}>Harry Potter</h2>
+              <h2 style={styles.title}>Books</h2>
               <div style={styles.pagination}>
                 <span style={styles.pageNumber}>1</span>
                 <span style={{ color: "#8a8a8a" }}>›</span>
