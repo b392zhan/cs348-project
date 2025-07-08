@@ -513,6 +513,44 @@ def sort_books():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route('/api/books/page-range')
+def filter_books_by_page_range():
+    try:
+        min_pages = request.args.get('min', type=int)
+        max_pages = request.args.get('max', type=int)
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        query = """
+            SELECT 
+                b.book_id, b.title, b.issue, b.page_length, b.cover_url,
+                GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors
+            FROM Book b
+            LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+            LEFT JOIN Author a ON wb.author_id = a.author_id
+            WHERE b.page_length BETWEEN %s AND %s
+            GROUP BY b.book_id
+            ORDER BY b.page_length ASC
+        """
+        cursor.execute(query, (min_pages, max_pages))
+        books = cursor.fetchall()
+
+        formatted_books = [{
+            "id": b["book_id"],
+            "title": b["title"],
+            "author": b["authors"] or "Unknown",
+            "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
+            "letter": b["title"][0].upper() if b["title"] else "?"
+        } for b in books]
+
+        return jsonify({"status": "success", "books": formatted_books})
+    
+    except Exception as e:
+        print("❌ Page range filter error:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Starting Flask server...")
     print("Testing database connection...")

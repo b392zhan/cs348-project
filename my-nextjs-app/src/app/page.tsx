@@ -177,6 +177,7 @@ export default function Component() {
     }
   };
 
+
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
 
   const fetchBooks = async (query = '', sort = 'asc') => {
@@ -368,7 +369,7 @@ export default function Component() {
       maxWidth: "600px",
     },
     bookSearchInput: {
-      width: "100%",
+      width: "550px",
       padding: "12px 16px 12px 48px",
       border: "1px solid #bbbbbb",
       borderRadius: "6px",
@@ -578,6 +579,79 @@ export default function Component() {
     },
   }
 
+  const [minPages, setMinPages] = useState('');
+  const [maxPages, setMaxPages] = useState('');
+  const handlePageRangeFilter = async (min: number, max: number) => {
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:5000/api/books/page-range?min=${min}&max=${max}`
+      );
+      const data = await response.json();
+      if (data.status === "success") {
+        setBooks(data.books);
+        setActiveFilter("ALL");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching books by page range:", error);
+    }
+  };
+
+  const [showTitleFilter, setShowTitleFilter] = useState(false);
+  const [showPageFilter, setShowPageFilter] = useState(false);
+
+  const [pageRange, setPageRange] = useState({ min: "", max: "" });
+
+  const popupStyle = {
+    position: "absolute",
+    backgroundColor: "#fff",
+    border: "2px solid #4bc1d2",
+    borderRadius: "8px",
+    padding: "16px",
+    boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
+    zIndex: 1000,
+    width: "240px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  };
+
+  const popupInputStyle = {
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1.5px solid #4bc1d2",
+    fontSize: "14px",
+    outline: "none",
+    color: "#white",
+    backgroundColor: "#333", 
+  };
+
+  const submitBtnStyle = {
+    padding: "14px",            // larger padding for bigger buttons
+    backgroundColor: "#4bc1d2",
+    border: "none",
+    borderRadius: "6px",
+    color: "black",             // changed from white to black for visibility
+    cursor: "pointer",
+    fontWeight: "700",          // bolder font weight
+    fontSize: "16px",           // bigger font size
+    textAlign: "center",
+  };
+  
+  const closeBtnStyle = {
+    padding: "12px",
+    backgroundColor: "#eee",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "16px",
+    color: "black",             // ensure text is black here too
+    fontWeight: "600",
+  };
+  
+
+
+
+
   return (
     <div style={styles.container}>
       {/* Sidebar */}
@@ -641,51 +715,175 @@ export default function Component() {
               </div>
             </div>
 
-            <div style={styles.controls}>
-              <button
-                style={styles.button}
-                onClick={() => {
-                  const newOrder = sortOrder === 'asc' ? 'desc' : 'asc'
-                  setSortOrder(newOrder)
-                  fetchBooks(searchQuery, newOrder)
-                }}
-              >
-                Title {sortOrder === 'asc' ? '↑' : '↓'}
-              </button>
+            
 
-              <button style={styles.button}>
-                Title
-                <span>›</span>
-              </button>
-              <button style={{ ...styles.button, ...styles.primaryButton }}>
-                <span>⚙</span>
-                Filter
-              </button>
-            </div>
           </div>
 
-          {/* Search Bar
-          <div style={styles.bookSearchContainer}>
-            <div style={styles.searchIcon}>🔍</div>
-            <input type="text" placeholder="Search book title" style={styles.bookSearchInput} />
-          </div> */}
 
           <div style={{
             position: 'relative',
             marginBottom: '24px',
             maxWidth: '600px'
           }}>
-            <div style={styles.bookSearchContainer}>
-              <div style={styles.searchIcon}>🔍</div>
-              <input
-                type="text"
-                placeholder="Search book title"
-                style={styles.bookSearchInput}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
+
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "16px",
+              }}
+            >
+              {/* Search bar container */}
+              <div style={styles.bookSearchContainer}>
+                <div style={styles.searchIcon}>🔍</div>
+                <input
+                  type="text"
+                  placeholder="Search book title"
+                  style={styles.bookSearchInput}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+              </div>
+
+              {/* Filter by Title */}
+              {/* Filter by Title */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowTitleFilter(true)}
+                  style={{
+                    ...styles.button,
+                    fontSize: "18px",
+                    color: "black",
+                    fontWeight: "600",
+                    padding: "14px 24px",
+                    minWidth: "150px",
+                    height: "48px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  🔤 Filter by Title
+                </button>
+                {showTitleFilter && (
+                  <div
+                    style={{
+                      ...popupStyle,
+                      top: "100%",
+                      left: 0,
+                      marginTop: "6px",
+                      width: "240px",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#4bc1d2",
+                      color: "#333",
+                      boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
+                    }}
+                  >
+                    <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
+                      Sort by Title
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setSortOrder("asc");
+                        setShowTitleFilter(false);
+                        fetchBooks(searchQuery, "asc");
+                      }}
+                      style={submitBtnStyle}
+                    >
+                      Ascending ↑
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSortOrder("desc");
+                        setShowTitleFilter(false);
+                        fetchBooks(searchQuery, "desc");
+                      }}
+                      style={submitBtnStyle}
+                    >
+                      Descending ↓
+                    </button>
+                    <button onClick={() => setShowTitleFilter(false)} style={closeBtnStyle}>
+                      Close
+                    </button>
+                  </div>
+                )}
+              </div>
+
+
+              {/* Filter by Page */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowPageFilter(true)}
+                  style={{
+                    ...styles.button,
+                    fontSize: "18px",
+                    color: "black",
+                    fontWeight: "600",
+                    padding: "14px 24px",
+                    minWidth: "150px",
+                    height: "48px",
+                    borderRadius: "8px",
+                  }}
+                 
+                  >
+                  📄 Filter by Page
+                </button>
+                {showPageFilter && (
+                  <div
+                    style={{
+                      ...popupStyle,
+                      top: "100%",
+                      left: 0,
+                      marginTop: "6px",
+                      width: "240px",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#4bc1d2",
+                      color: "#333",
+                      boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
+                    }}
+                  >
+                    <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
+                      Filter by Page Range
+                    </h4>
+                    <input
+                      type="number"
+                      placeholder="Min pages"
+                      value={pageRange.min}
+                      onChange={(e) =>
+                        setPageRange({ ...pageRange, min: e.target.value })
+                      }
+                      style={popupInputStyle}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max pages"
+                      value={pageRange.max}
+                      onChange={(e) =>
+                        setPageRange({ ...pageRange, max: e.target.value })
+                      }
+                      style={popupInputStyle}
+                    />
+                    <button
+                      onClick={() => {
+                        handlePageRangeFilter(Number(pageRange.min), Number(pageRange.max));
+                        setShowPageFilter(false);
+                      }}
+                      style={submitBtnStyle}
+                    >
+                      Submit
+                    </button>
+                    <button onClick={() => setShowPageFilter(false)} style={closeBtnStyle}>
+                      Close
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>;
+
+
+
+
 
             {searchQuery && books.length === 0 && (
               <div style={{
