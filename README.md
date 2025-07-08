@@ -2,7 +2,7 @@
 
 Shelfie is a minimalist, user-focused application designed to help individuals log and organize their personal book collections. Think of it as a personal library for users themselves! Shelfie allows users to record books they’ve read, plan a wishlist of future reads, and search for books they are interested in learning more about.
 
-With features like personalized ratings, reading dates, reviews, and priority-based wishlists, Shelfie serves as a digital bookshelf for book lovers of all ages. Each user contributes to their own dataset, entering details like title, genre, ISBN, and author, allowing complete control over their library.
+With features like personalized ratings, reading dates, reviews, and priority-based wishlists, Shelfie serves as a digital bookshelf for book lovers of all ages. Each user contributes to their own dataset, entering details like title, issue, page length, and author, allowing complete control over their library.
 
 ## How to Run
 Under config.py, edit DB_PASSWORD with your own password.
