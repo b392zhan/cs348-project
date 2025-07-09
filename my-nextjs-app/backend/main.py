@@ -3,6 +3,7 @@ from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
 import click
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -236,78 +237,6 @@ def not_found_error(error):
 def internal_error(error):
     return jsonify({"status": "error", "message": "Internal server error"}), 500
 
-# @app.route('/api/books', methods=['POST'])
-# def log_book_from_ui():
-#     try:
-#         data = request.get_json()
-#         title = data.get('title')
-#         author = data.get('author')
-#         cover_url = data.get('coverUrl')
-
-#         print("📘 Book added from UI:")
-#         print(f"    Title: {title}")
-#         print(f"    Author: {author}")
-#         print(f"    Cover URL: {cover_url}")
-
-#         return jsonify({
-#             "status": "success",
-#             "message": "Book received on backend"
-#         }), 200
-#     except Exception as e:
-#         print(f"❌ Error receiving book data: {e}")
-#         return jsonify({
-#             "status": "error",
-#             "message": str(e)
-#         }), 500
-
-# # @app.route('/api/books', methods=['POST'])
-# # def log_book_from_ui():
-#     try:
-#         data = request.get_json()
-#         title = data.get('title')
-#         author_name = data.get('author')
-#         cover_url = data.get('coverUrl')
-
-#         if not title or not author_name:
-#             return jsonify({"status": "error", "message": "Title and author are required"}), 400
-
-#         db = get_db()
-#         cursor = db.cursor()
-
-#         # Step 1: Insert author if not exists
-#         cursor.execute("SELECT id FROM authors WHERE name = %s", (author_name,))
-#         author = cursor.fetchone()
-#         if author:
-#             author_id = author[0]
-#         else:
-#             cursor.execute("INSERT INTO authors (name) VALUES (%s)", (author_name,))
-#             db.commit()
-#             author_id = cursor.lastrowid
-
-#         # Step 2: Insert book
-#         cursor.execute(
-#             "INSERT INTO books (title, author_id, cover_url) VALUES (%s, %s, %s)",
-#             (title, author_id, cover_url)
-#         )
-#         db.commit()
-#         book_id = cursor.lastrowid
-
-#         cursor.close()
-
-#         print(f"📚 New book added: '{title}' by {author_name} (ID: {book_id})")
-
-#         return jsonify({
-#             "status": "success",
-#             "message": "Book added to database",
-#             "book_id": book_id
-#         }), 201
-
-#     except Error as err:
-#         print(f"❌ MySQL Error: {err}")
-#         return jsonify({"status": "error", "message": str(err)}), 500
-#     except Exception as e:
-#         print(f"❌ Unexpected Error: {e}")
-#         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/books', methods=['POST'])
 def log_book_from_ui():
@@ -510,6 +439,66 @@ def sort_books():
         return jsonify({"status": "error", "message": str(err)}), 500
     except Exception as e:
         print(f"❌ Server error during search: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+
+@app.route('/api/star', methods=['POST'])
+def star_book():
+    try:
+        data = request.get_json()
+        book_id = data.get('book_id')
+        starred = data.get('starred', True)
+
+        if not book_id:
+            return jsonify({"status": "error", "message": "Missing book_id"}), 400
+
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("SELECT MAX(user_id) FROM Starred")
+        max_uid = cursor.fetchone()[0] or 0
+        next_uid = max_uid + 1
+
+        cursor.execute(
+            "INSERT INTO Starred (user_id, book_id, starred) VALUES (%s, %s, %s)",
+            (next_uid, book_id, starred)
+        )
+
+        db.commit()
+        cursor.close()
+
+        return jsonify({"status": "success", "message": "Book starred successfully"})
+
+    except Exception as e:
+        print(f"❌ Error starring book: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/unstar', methods=['DELETE'])
+def unstar_book():
+    try:
+        data = request.get_json()
+        book_id = data.get('book_id')
+
+        if not book_id:
+            return jsonify({"status": "error", "message": "Missing book_id"}), 400
+
+        db = get_db()
+        cursor = db.cursor()
+
+        # Delete all star records for this book (regardless of user_id)
+        cursor.execute(
+            "DELETE FROM Starred WHERE book_id = %s",
+            (book_id,)
+        )
+
+        db.commit()
+        cursor.close()
+
+        return jsonify({"status": "success", "message": "Book unstarred successfully"})
+
+    except Exception as e:
+        print(f"❌ Error unstarring book: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

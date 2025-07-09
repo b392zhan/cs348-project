@@ -46,6 +46,7 @@ export default function Component() {
     pageLength: "",
     coverUrl: "",
     publisher: "",  // <-- ADD THIS
+    starred: ""
   });
 
 
@@ -413,10 +414,19 @@ export default function Component() {
       gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
       gap: "24px",
     },
+    // bookCard: {
+    //   display: "flex",
+    //   flexDirection: "column" as const,
+    //   alignItems: "center",
+    // },
     bookCard: {
-      display: "flex",
-      flexDirection: "column" as const,
-      alignItems: "center",
+      position: "relative",
+      backgroundColor: "#fff",
+      borderRadius: "12px",
+      padding: "12px",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+      transition: "transform 0.2s ease",
+      cursor: "pointer"
     },
     bookCover: {
       width: "128px",
@@ -622,7 +632,7 @@ export default function Component() {
     fontSize: "14px",
     outline: "none",
     color: "#white",
-    backgroundColor: "#333", 
+    backgroundColor: "#333",
   };
 
   const submitBtnStyle = {
@@ -636,7 +646,7 @@ export default function Component() {
     fontSize: "16px",           // bigger font size
     textAlign: "center",
   };
-  
+
   const closeBtnStyle = {
     padding: "12px",
     backgroundColor: "#eee",
@@ -647,7 +657,8 @@ export default function Component() {
     color: "black",             // ensure text is black here too
     fontWeight: "600",
   };
-  
+
+  const [popupVisibleFor, setPopupVisibleFor] = useState(null); // book ID for which popup is visible
 
 
 
@@ -715,7 +726,7 @@ export default function Component() {
               </div>
             </div>
 
-            
+
 
           </div>
 
@@ -825,8 +836,8 @@ export default function Component() {
                     height: "48px",
                     borderRadius: "8px",
                   }}
-                 
-                  >
+
+                >
                   📄 Filter by Page
                 </button>
                 {showPageFilter && (
@@ -943,15 +954,167 @@ export default function Component() {
                 return book.letter === activeFilter
               })
               .map((book) => (
+                // <div key={book.id} style={styles.bookCard}>
+                //   <div style={styles.bookCover}>
+                //     <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
+                //   </div>
+                //   <div style={styles.bookInfo}>
+                //     <h4 style={styles.bookTitle}>{book.title}</h4>
+                //     <p style={styles.bookAuthor}>{book.author}</p>
+                //   </div>
+                // </div>
                 <div key={book.id} style={styles.bookCard}>
+                  {/* Star icon at top-right */}
+                  <div
+                    onClick={() => setPopupVisibleFor(book.id)}
+                    style={{
+                      position: "absolute",
+                      top: "8px",
+                      right: "8px",
+                      cursor: "pointer",
+                      fontSize: "20px",
+                      color: book.starred ? "#f5b301" : "#ccc",
+                    }}
+                    title={book.starred ? "Starred" : "Click to star"}
+                  >
+                    ★
+                  </div>
+
+                  {/* Book Cover */}
                   <div style={styles.bookCover}>
                     <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
                   </div>
+
+                  {/* Book Info */}
                   <div style={styles.bookInfo}>
                     <h4 style={styles.bookTitle}>{book.title}</h4>
                     <p style={styles.bookAuthor}>{book.author}</p>
                   </div>
+
+                  {/* Star Confirmation Popup */}
+                  {popupVisibleFor === book.id && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "40px",
+                        right: "10px",
+                        backgroundColor: "#fff",
+                        border: "1px solid #000", // Changed line color to black
+                        borderRadius: "8px",
+                        padding: "12px",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        zIndex: 100,
+                        width: "200px",
+                      }}
+                    >
+                      <p style={{ marginBottom: "12px", color: "#000", fontWeight: "500" }}>
+                        Do you want to star or unstar this book?
+                      </p>
+
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        {/* <button
+                          onClick={() => {
+                            const updatedBooks = books.map(b =>
+                              b.id === book.id ? { ...b, starred: true } : b
+                            );
+                            setBooks(updatedBooks);
+                            setPopupVisibleFor(null);
+                          }}
+                          style={{
+                            backgroundColor: "#4bc1d2",
+                            color: "#fff",
+                            padding: "6px 10px",
+                            borderRadius: "4px",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Star
+                        </button> */}
+
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("http://127.0.0.1:5000/api/star", {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  book_id: book.id,
+                                  starred: true,
+                                }),
+                              });
+
+                              const result = await res.json();
+                              console.log(result);
+
+                              const updatedBooks = books.map((b) =>
+                                b.id === book.id ? { ...b, starred: true } : b
+                              );
+                              setBooks(updatedBooks);
+                              setPopupVisibleFor(null);
+                            } catch (error) {
+                              console.error("Error starring book:", error);
+                            }
+                          }}
+                          style={{
+                            backgroundColor: "#4bc1d2",
+                            color: "#fff",
+                            padding: "6px 10px",
+                            borderRadius: "4px",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Star
+                        </button>
+
+
+
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch("http://127.0.0.1:5000/api/unstar", {
+                                method: "DELETE",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  book_id: book.id,
+                                }),
+                              });
+
+                              const result = await res.json();
+                              console.log(result);
+
+                              const updatedBooks = books.map((b) =>
+                                b.id === book.id ? { ...b, starred: false } : b
+                              );
+                              setBooks(updatedBooks);
+                              setPopupVisibleFor(null);
+                            } catch (error) {
+                              console.error("Error unstarring book:", error);
+                            }
+                          }}
+                          style={{
+                            backgroundColor: "#888",
+                            color: "#fff",
+                            padding: "6px 10px",
+                            borderRadius: "4px",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Unstar
+                        </button>
+
+                      </div>
+                    </div>
+                  )}
+
                 </div>
+
               ))}
           </div>
         </div>
