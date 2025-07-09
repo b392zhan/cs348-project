@@ -17609,19 +17609,102 @@ After Unstarring the Book (book_id = 321) in the above table
 
 Assume the Book table has the following data:
 
-| book_id | title | issue | page_length | authors | cover_url                              |
-| ------- | ----- | ----- | ----------- | ------- | -------------------------------------- |
-| 21      | ca    | ca    | 100         | 400     | /placeholder.svg?height=192\&width=128 |
-| 26      | ca    | ca    | 300         | ca      | /placeholder.svg?height=192\&width=128 |
-| 22      | cb    | cb    | 100         | cb      | /placeholder.svg?height=192\&width=128 |
-| 23      | cc    | cc    | 200         | cc      | /placeholder.svg?height=192\&width=128 |
-| 25      | cg    | cg    | 100         | cg      | /placeholder.svg?height=192\&width=128 |
-
-
-And the user adds a filter of page length with minimum pages = 200 and maximum pages = 300
-Then the table will look like 
-
-| book\_id | title | issue | page\_length | authors | cover\_url                             |
-| -------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
-| 23       | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
-| 26       | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
+1	Silent Kingdom of the Ancients	1st Edition	353	https://picsum.photos/seed/101422301060268032/300/400
+2	Lost Star of the Forgotten	Special Edition	293	https://picsum.photos/seed/101422301060268033/300/400
+3	Final Mountain of the Forgotten	Anniversary Edition	196	https://picsum.photos/seed/101422301060268034/300/400
+4	Ancient Mountain of Time	Digital Edition	273	https://picsum.photos/seed/101422301060268035/300/400
+5	Secret Kingdom in the Shadows		267	https://picsum.photos/seed/101422301060268036/300/400
+6	Blind Mountain of the Forgotten	Collector's Edition	361	https://picsum.photos/seed/101422301060268037/300/400
+7	Blind Star of Secrets		214	https://picsum.photos/seed/101422301060268038/300/400
+8	Stolen Shadow of the Forgotten	1st Edition	378	https://picsum.photos/seed/101422301060268039/300/400
+9	Dark Kingdom of the Forgotten		321	https://picsum.photos/seed/101422301060268040/300/400
+10	Ancient Stone of Secrets	Anniversary Edition	748	https://picsum.photos/seed/101422301060268041/300/400
+11	Blind Stone from the Ashes	International Edition	318	https://picsum.photos/seed/101422301060268042/300/400
+12	Crimson Fire of Dreams	Collector's Edition	242	https://picsum.photos/seed/101422301060268043/300/400
+13	Last Chronicle of Secrets		365	https://picsum.photos/seed/101422301060268044/300/400
+14	First Legacy of Secrets	Collector's Edition	292	https://picsum.photos/seed/101422301060268045/300/400
+15	Midnight Stone from the Ashes		342	https://picsum.photos/seed/101422301060268046/300/400
+16	Last Forest of Secrets		211	https://picsum.photos/seed/101422301060268047/300/400
+17	Golden Chronicle of Time		674	https://picsum.photos/seed/101422301060268048/300/400
+18	Lost River in the Shadows	Collector's Edition	257	https://picsum.photos/seed/101422301060268049/300/400
+19	Midnight Sea from the Ashes		229	https://picsum.photos/seed/101422301060268050/300/400
+20	Lost Kingdom of Dreams	1st Edition	335	https://picsum.photos/seed/101422301060268051/300/400
+21	Final Wind of Secrets		116	https://picsum.photos/seed/101422301060268052/300/400
+22	Midnight Fire of Secrets		292	https://picsum.photos/seed/101422301060268053/300/400
+23	Golden Stone of Dreams	Expanded Edition	261	https://picsum.photos/seed/101422301060268054/300/400
+24	Secret Sea of Destiny	Revised Edition	290	https://picsum.photos/seed/101422301060268055/300/400
+25	Midnight Throne of Destiny	Digital Edition	212	https://picsum.photos/seed/101422301060268056/300/400
+26	Blue Chronicle of the Forgotten		203	https://picsum.photos/seed/101422301060268057/300/400
+27	Silent Chronicle of Secrets	Anniversary Edition	241	https://picsum.photos/seed/101422301060268058/300/400
+28	Ancient Fire of Secrets	Special Edition	206	https://picsum.photos/seed/101422301060268059/300/400
+29	Secret Promise of Destiny		632	https://picsum.photos/seed/101422301060268060/300/400
+30	Final River beyond the Horizon	Digital Edition	371	https://picsum.photos/seed/101422301060268061/300/400
+31	First Star of the Ancients	Hardcover Edition	274	https://picsum.photos/seed/101422301060268062/300/400
+33	Midnight Stone from the Ashes		375	https://picsum.photos/seed/101422301060268064/300/400
+34	Red Star of Secrets	Paperback Edition	260	https://picsum.photos/seed/101422301060268065/300/400
+35	Midnight Forest in the Shadows		359	https://picsum.photos/seed/101422301060268066/300/400
+36	Silent Star of Time		380	https://picsum.photos/seed/101422301060268067/300/400
+37	Secret River of the Forgotten		277	https://picsum.photos/seed/101422301060268068/300/400
+38	Ancient Legacy in the Shadows		390	https://picsum.photos/seed/101422301060268069/300/400
+39	Ancient Mountain of Dreams		238	https://picsum.photos/seed/101422301060268070/300/400
+40	Midnight Key of Secrets		706	https://picsum.photos/seed/101422301060268071/300/400
+41	Stolen Stone at World's End		488	https://picsum.photos/seed/101422301060268072/300/400
+42	Final Forest of Dreams		295	https://picsum.photos/seed/101422301060268073/300/400
+43	Midnight Wind of Secrets		318	https://picsum.photos/seed/101422301060268074/300/400
+44	Crimson Wind beyond the Horizon	Expanded Edition	310	https://picsum.photos/seed/101422301060268075/300/400
+45	Golden Wind of Destiny		223	https://picsum.photos/seed/101422301060268076/300/400
+46	Golden Key of Destiny		262	https://picsum.photos/seed/101422301060268077/300/400
+47	Red Kingdom from the Ashes		643	https://picsum.photos/seed/101422301060268078/300/400
+48	Red Forest from the Ashes		373	https://picsum.photos/seed/101422301060268079/300/400
+49	Ancient Kingdom of the Forgotten		508	https://picsum.photos/seed/101422301060268080/300/400
+50	Last Legacy of the Ancients	Special Edition	383	https://picsum.photos/seed/101422301060268081/300/400
+51	Silent Promise of Secrets	Paperback Edition	527	https://picsum.photos/seed/101422301060268082/300/400
+52	Stolen River in the Shadows	Special Edition	294	https://picsum.photos/seed/101422301060268083/300/400
+53	Red Kingdom in the Shadows		252	https://picsum.photos/seed/101422301060268084/300/400
+54	Red Kingdom in the Shadows		379	https://picsum.photos/seed/101422301060268085/300/400
+55	Last Wind from the Ashes		291	https://picsum.photos/seed/101422301060268086/300/400
+56	Secret Key in the Shadows	International Edition	255	https://picsum.photos/seed/101422301060268087/300/400
+57	Silent Kingdom from the Ashes	1st Edition	390	https://picsum.photos/seed/101422301060268088/300/400
+58	Red Key of Time	Revised Edition	202	https://picsum.photos/seed/101422301060268089/300/400
+59	Last Forest of Destiny	Revised Edition	333	https://picsum.photos/seed/101422301060268090/300/400
+60	Midnight Shadow of the Forgotten		385	https://picsum.photos/seed/101422301060268091/300/400
+61	Red Throne of Destiny	Expanded Edition	721	https://picsum.photos/seed/101422301060268092/300/400
+62	Blue Mountain of Time	Anniversary Edition	318	https://picsum.photos/seed/101422301060268093/300/400
+63	Silent Legacy from the Ashes	1st Edition	278	https://picsum.photos/seed/101422301060268094/300/400
+64	Lost Legacy of Destiny		256	https://picsum.photos/seed/101422301060268095/300/400
+65	Silent Key in the Shadows	Collector's Edition	393	https://picsum.photos/seed/101422301060268096/300/400
+66	Secret Sea of the Forgotten		374	https://picsum.photos/seed/101422301060268097/300/400
+67	Secret River of Destiny		352	https://picsum.photos/seed/101422301060268098/300/400
+68	Silent River of Destiny	Paperback Edition	347	https://picsum.photos/seed/101422301060268099/300/400
+69	Dark Fire in the Shadows		374	https://picsum.photos/seed/101422301060268100/300/400
+70	Golden Mountain at World's End		368	https://picsum.photos/seed/101422301060268101/300/400
+71	Red Sea of the Ancients		233	https://picsum.photos/seed/101422301060268102/300/400
+72	Red Promise at World's End		209	https://picsum.photos/seed/101422301060268103/300/400
+73	Dark River of Destiny	Revised Edition	258	https://picsum.photos/seed/101422301060268104/300/400
+74	Secret Promise of the Ancients		576	https://picsum.photos/seed/101422301060268105/300/400
+75	Blind Fire of the Forgotten		287	https://picsum.photos/seed/101422301060268106/300/400
+76	Ancient Star in the Shadows		775	https://picsum.photos/seed/101422301060268107/300/400
+77	First Stone of Dreams		301	https://picsum.photos/seed/101422301060268108/300/400
+78	Secret Stone of Destiny		249	https://picsum.photos/seed/101422301060268109/300/400
+79	Ancient Chronicle of Destiny	Anniversary Edition	489	https://picsum.photos/seed/101422301060268110/300/400
+80	Midnight Sea from the Ashes		289	https://picsum.photos/seed/101422301060268111/300/400
+81	Crimson Kingdom of Time	Revised Edition	245	https://picsum.photos/seed/101422301060268112/300/400
+82	Golden Mountain at World's End		419	https://picsum.photos/seed/101422301060268113/300/400
+83	Ancient Fire in the Shadows		300	https://picsum.photos/seed/101422301060268114/300/400
+84	Golden Wind of the Forgotten		342	https://picsum.photos/seed/101422301060268115/300/400
+85	Crimson Mountain of Time	Anniversary Edition	277	https://picsum.photos/seed/101422301060268116/300/400
+86	Dark Key of Destiny		364	https://picsum.photos/seed/101422301060268117/300/400
+87	Golden Key of Secrets	Collector's Edition	315	https://picsum.photos/seed/101422301060268118/300/400
+88	Silent Shadow beyond the Horizon	International Edition	316	https://picsum.photos/seed/101422301060268119/300/400
+89	Golden Sea of Secrets		482	https://picsum.photos/seed/101422301060268120/300/400
+90	First Shadow of the Forgotten	Revised Edition	351	https://picsum.photos/seed/101422301060268121/300/400
+91	Golden Kingdom of Secrets		775	https://picsum.photos/seed/101422301060268122/300/400
+92	Blue Kingdom of the Forgotten		265	https://picsum.photos/seed/101422301060268123/300/400
+93	Crimson Mountain of Dreams		289	https://picsum.photos/seed/101422301060268124/300/400
+94	Blind Legacy in the Shadows	Expanded Edition	204	https://picsum.photos/seed/101422301060268125/300/400
+95	Final Stone at World's End	Collector's Edition	297	https://picsum.photos/seed/101422301060268126/300/400
+96	Crimson Promise of Destiny		151	https://picsum.photos/seed/101422301060268127/300/400
+97	First Legacy of Secrets	Digital Edition	190	https://picsum.photos/seed/101422301060268128/300/400
+98	Crimson Throne beyond the Horizon		218	https://picsum.photos/seed/101422301060268129/300/400
+99	First River in the Shadows		687	https://picsum.photos/seed/101422301060268130/300/400
+100	Blind Throne of Secrets	Expanded Edition	262	https://picsum.photos/seed/101422301060268131/300/400
