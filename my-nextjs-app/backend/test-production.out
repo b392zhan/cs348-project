@@ -15468,39 +15468,62 @@
 
 -------------------------------------------------------------------------------------------------
 
-//Output of the R9 feature - adding a new book
-//Note these are changes in the tables affected by the query, note initially the tables are assumed to me empty 
+//Output of the R9 feature - 
 
-Author Table -
+Star a Book 
 
-| author_id | name         | date\_of\_birth |
-| --------- | ------------ | --------------- |
-| 1         | J.K. Rowling | 1965-07-31      |
+Suppose the Starred table initially has two entries:
 
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   321    |  TRUE   |
++---------+----------+---------+
 
-Publisher Table -
+Now, the user stars book_id = 456. The table becomes:
 
-| publisher_id | name       |
-| ------------ | ---------- |
-| 1            | Bloomsbury |
-
-
-Book Table -
-
-| book_id | title                                    | issue       | page_length | cover_url |
-| ------- | ---------------------------------------- | ----------- | ----------- | --------- |
-| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | /hp1.jpg  |
-
-
-WrittenBy Table -
-
-| book_id | author_id |
-| ------- | --------- |
-| 1       | 1         |
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   321    |  TRUE   |
+|   999   |   456    |  TRUE   |
++---------+----------+---------+
 
 
-PublishedBy Table -
+UnStar a Book
 
-| book_id | publisher_id |
-| ------- | ------------ |
-| 1       | 1            |
+After Unstarring the Book (book_id = 321) in the above table
+
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   456    |  TRUE   |
++---------+----------+---------+
+
+
+
+-------------------------------------------------------------------------------------------------
+
+//Output of the R10 feature - 
+
+Assume the Book table has the following data:
+
+| book_id | title | issue | page_length | authors | cover_url                              |
+| ------- | ----- | ----- | ----------- | ------- | -------------------------------------- |
+| 21      | ca    | ca    | 100         | 400     | /placeholder.svg?height=192\&width=128 |
+| 26      | ca    | ca    | 300         | ca      | /placeholder.svg?height=192\&width=128 |
+| 22      | cb    | cb    | 100         | cb      | /placeholder.svg?height=192\&width=128 |
+| 23      | cc    | cc    | 200         | cc      | /placeholder.svg?height=192\&width=128 |
+| 25      | cg    | cg    | 100         | cg      | /placeholder.svg?height=192\&width=128 |
+
+
+And the user adds a filter of page length with minimum pages = 200 and maximum pages = 300
+Then the table will look like 
+
+| book\_id | title | issue | page\_length | authors | cover\_url                             |
+| -------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
+| 23       | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
+| 26       | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
