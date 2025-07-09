@@ -36,9 +36,8 @@ Books in the library can be filtered by their page length. When a user uses this
 
 ## How to Generate Production Data
 
-Book dataset is populated by a set found on Kaggle with real-world titles. To both manage and utilize the data for our purposes, the dataset comprises 10,000 books and 5,000 authors. The data was further transformed using Python to normalize fields like author and mapping to keys. After formatting the new CSV file, it was uploaded to MySQL Workbench using Import Wizard. Throughout the process, linkages were established and verified to yield results.
+Book dataset is populated by a set found on Kaggle with real-world titles (see below). To both manage and utilize the data for our purposes, the dataset comprises 10,000 books and 5,000 authors. The data was further transformed using Python to normalize fields like author and mapping to keys. After formatting the new CSV file, it was uploaded to MySQL Workbench using Import Wizard. Throughout the process, linkages were established and verified to yield results.
 
-
-
+https://www.kaggle.com/datasets/saurabhbagchi/books-dataset
 
 
