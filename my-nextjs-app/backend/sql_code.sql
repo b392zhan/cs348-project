@@ -68,3 +68,11 @@ CREATE TABLE PublishedBy (
     FOREIGN KEY (book_id) REFERENCES Book(book_id),
     FOREIGN KEY (publisher_id) REFERENCES Publisher(publisher_id)
 );
+
+CREATE TABLE Starred (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    starred BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (book_id) REFERENCES Book(book_id) ON DELETE CASCADE,
+    UNIQUE (user_id, book_id)
+);
