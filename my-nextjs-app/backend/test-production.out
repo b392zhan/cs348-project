@@ -1,0 +1,126 @@
+//Output of the R6 feature - searching book by title - 
+
+| book\_id | title         | issue   | page\_length | authors | cover\_url                                                                                                                   |
+| -------- | ------------- | ------- | ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 8        | My Book Cover | Toronto | 500          | Canva   | [https://edit.org/images/cat/book-covers%20big-2019101610.jpg](https://edit.org/images/cat/book-covers%20big-2019101610.jpg) |
+
+
+-------------------------------------------------------------------------------------------------
+
+
+//Output of the R7 feature - sorting by ascending order- 
+
+
+
+
+//Output of the R8 feature - sorting by descending order- 
+
+| book_id | title | issue | page\_length | authors | cover_url                              |
+| ------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
+| 24      | cx    | cx    | 200          | cx      | /placeholder.svg?height=192\&width=128 |
+| 25      | cg    | cg    | 300          | cg      | /placeholder.svg?height=192\&width=128 |
+| 23      | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
+| 22      | cb    | cb    | 300          | cb      | /placeholder.svg?height=192\&width=128 |
+| 21      | ca    | ca    | 200          | 400     | /placeholder.svg?height=192\&width=128 |
+| 26      | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of the R8 feature - adding a new book
+//Note these are changes in the tables affected by the query, note initially the tables are assumed to me empty 
+
+Author Table -
+
+| author_id | name         | date\_of\_birth |
+| --------- | ------------ | --------------- |
+| 1         | J.K. Rowling | 1965-07-31      |
+
+
+Publisher Table -
+
+| publisher_id | name       |
+| ------------ | ---------- |
+| 1            | Bloomsbury |
+
+
+Book Table -
+
+| book_id | title                                    | issue       | page_length | cover_url |
+| ------- | ---------------------------------------- | ----------- | ----------- | --------- |
+| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | /hp1.jpg  |
+
+
+WrittenBy Table -
+
+| book_id | author_id |
+| ------- | --------- |
+| 1       | 1         |
+
+
+PublishedBy Table -
+
+| book_id | publisher_id |
+| ------- | ------------ |
+| 1       | 1            |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of the R9 feature - 
+
+Star a Book 
+
+Suppose the Starred table initially has two entries:
+
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   321    |  TRUE   |
++---------+----------+---------+
+
+Now, the user stars book_id = 456. The table becomes:
+
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   321    |  TRUE   |
+|   999   |   456    |  TRUE   |
++---------+----------+---------+
+
+
+UnStar a Book
+
+After Unstarring the Book (book_id = 321) in the above table
+
++---------+----------+---------+
+| user_id | book_id  | starred |
++---------+----------+---------+
+|   999   |   123    |  TRUE   |
+|   999   |   456    |  TRUE   |
++---------+----------+---------+
+
+
+
+-------------------------------------------------------------------------------------------------
+
+//Output of the R10 feature - 
+
+Assume the Book table has the following data:
+
+| book_id | title | issue | page_length | authors | cover_url                              |
+| ------- | ----- | ----- | ----------- | ------- | -------------------------------------- |
+| 21      | ca    | ca    | 100         | 400     | /placeholder.svg?height=192\&width=128 |
+| 26      | ca    | ca    | 300         | ca      | /placeholder.svg?height=192\&width=128 |
+| 22      | cb    | cb    | 100         | cb      | /placeholder.svg?height=192\&width=128 |
+| 23      | cc    | cc    | 200         | cc      | /placeholder.svg?height=192\&width=128 |
+| 25      | cg    | cg    | 100         | cg      | /placeholder.svg?height=192\&width=128 |
+
+
+And the user adds a filter of page length with minimum pages = 200 and maximum pages = 300
+Then the table will look like 
+
+| book\_id | title | issue | page\_length | authors | cover\_url                             |
+| -------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
+| 23       | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
+| 26       | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
