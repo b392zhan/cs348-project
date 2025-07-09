@@ -59,6 +59,14 @@ GROUP BY
     b.cover_url
 ORDER BY b.title DESC;
 
+-- R9 - Star a Book
+INSERT INTO
+    HasStarred (user_id, book_id, starred)
+VALUES (999, 456, TRUE);
+
+-- R9 - Unstar a Book
+DELETE FROM HasStarred WHERE book_id = 456;
+
 -- R10 Feature - adding a new book
 -- Step 1: Insert Author if not exists
 INSERT INTO
