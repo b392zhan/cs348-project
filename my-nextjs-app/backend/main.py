@@ -238,10 +238,79 @@ def internal_error(error):
     return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 
+
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    name = data.get('name', '')
+    age = data.get('age', None)
+    
+    db = get_db()
+    
+
+    cursor = db.cursor()
+    try:
+        cursor.execute("INSERT INTO User (username, password, name, age) VALUES (%s, %s, %s, %s)",
+                       (username, password, name, age))
+        db.commit()
+        return jsonify({'message': 'User registered successfully'}), 201
+    except mysql.connector.IntegrityError:
+        return jsonify({'error': 'Username already exists'}), 400
+
+from flask import request, jsonify, make_response
+
+@app.route('/api/login', methods=['POST']) 
+def login():
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    
+    print("Username is ", username)
+    print("Username is ", password)
+    
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM User WHERE username = %s AND password = %s", (username, password))
+    user = cursor.fetchone()
+
+    if user:
+        response = make_response(jsonify({'message': 'Login successful', 'user_id': user['user_id']}))
+        
+        # Set cookie for 1 day (adjust as needed)
+        response.set_cookie(
+            'user_id',
+            str(user['user_id']),
+            max_age=60*60*24,  # 1 day
+            httponly=False,    # set to True if you want to restrict JavaScript access
+            samesite='Lax'
+        )
+
+        return response, 200
+    else:
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+
 @app.route('/api/books', methods=['POST'])
 def log_book_from_ui():
     try:
+        db = get_db()
+        cursor = db.cursor()
+        
         data = request.get_json()
+        
+        
+        user_id = data.get('user_id')
+        
+        cursor.execute("SELECT username FROM User WHERE user_id = %s", (user_id,))
+        row = cursor.fetchone()
+        username = row[0] if row else None
+
+        print("Username associated with user_id", user_id, "is:", username)
+        
 
         title = data.get('title')
         issue = data.get('issue')
@@ -254,8 +323,7 @@ def log_book_from_ui():
         if not title or not author_name or not publisher_name:
             return jsonify({"status": "error", "message": "Title, author, and publisher are required"}), 400
 
-        db = get_db()
-        cursor = db.cursor()
+        
 
         # Step 1: Insert author if not exists
         cursor.execute("""
@@ -285,9 +353,9 @@ def log_book_from_ui():
 
         # Step 5: Insert book
         cursor.execute("""
-            INSERT INTO Book (title, issue, page_length, cover_url)
-            VALUES (%s, %s, %s, %s)
-        """, (title, issue or None, page_length or None, cover_url or None))
+            INSERT INTO Book (title, issue, page_length, cover_url, user_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (title, issue or None, page_length or None, cover_url or None, user_id))
         book_id = cursor.lastrowid
 
         # Step 6: Insert into WrittenBy

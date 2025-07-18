@@ -20,7 +20,7 @@ export default function RegisterPage() {
 
     const data = await res.json()
     if (res.ok) {
-      router.push('/login')
+      router.push('/')
     } else {
       setError(data.error || 'Registration failed')
     }

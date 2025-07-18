@@ -107,6 +107,7 @@ export default function Component() {
     };
 
     try {
+      const user_id = localStorage.getItem('user_id'); 
       const response = await fetch("http://127.0.0.1:5000/api/books", {
         method: "POST",
         headers: {
@@ -119,7 +120,8 @@ export default function Component() {
           author: newBook.author,
           author_dob: newBook.authorDob,
           cover_url: newBook.coverUrl,
-          publisher: newBook.publisher,  // <-- REQUIRED BY BACKEND
+          publisher: newBook.publisher,
+          user_id: user_id  // <-- REQUIRED BY BACKEND
         }),
       });
 
@@ -890,7 +892,7 @@ export default function Component() {
                   </div>
                 )}
               </div>
-            </div>;
+            </div>
 
 
 
