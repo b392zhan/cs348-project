@@ -387,14 +387,18 @@ def log_book_from_ui():
 def search_books():
     try:
         search_query = request.args.get('query', '').strip()
-        
-        if not search_query:
-            return get_all_books()
-        
+        username = request.args.get('username', '').strip()
+
+        if not search_query or not username:
+            return jsonify({"status": "error", "message": "Missing search query or username"}), 400
+
         db = get_db()
         cursor = db.cursor(dictionary=True)
-        
-        # Exact match only query
+
+        if not username:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+
+        # Search query filtered by user_id
         cursor.execute("""
             SELECT 
                 b.book_id, 
@@ -406,14 +410,14 @@ def search_books():
             FROM Book b
             LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
             LEFT JOIN Author a ON wb.author_id = a.author_id
-            WHERE b.title = %s
+            WHERE b.title = %s AND b.user_id = %s
             GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
             ORDER BY b.title
-        """, (search_query,))
-        
+        """, (search_query, username))
+
         books = cursor.fetchall()
         cursor.close()
-        
+
         formatted_books = []
         for book in books:
             formatted_books.append({
@@ -423,79 +427,70 @@ def search_books():
                 "coverUrl": book["cover_url"] or "/placeholder.svg?height=192&width=128",
                 "letter": book["title"][0].upper() if book["title"] else "A"
             })
-        
+
         return jsonify({
             "status": "success",
             "books": formatted_books
         })
-        
+
     except Error as err:
         print(f"❌ Database error during search: {err}")
         return jsonify({"status": "error", "message": str(err)}), 500
     except Exception as e:
         print(f"❌ Server error during search: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-    
+
     
 @app.route('/api/books/sort', methods=['GET'])
 def sort_books():
     try:
         search_query = request.args.get('query', '').strip()
         sort_order = request.args.get('sort', 'asc').lower()
+        username = request.args.get('username', '').strip()  # <- ✅ Get username
 
-        # Default to ASC if invalid input
         if sort_order not in ('asc', 'desc'):
             sort_order = 'asc'
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        if not search_query:
-            # If no search query, return all books sorted
-            cursor.execute(f"""
-                SELECT 
-                    b.book_id, 
-                    b.title, 
-                    b.issue, 
-                    b.page_length,
-                    GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors,
-                    b.cover_url
-                FROM Book b
-                LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
-                LEFT JOIN Author a ON wb.author_id = a.author_id
-                GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
-                ORDER BY b.title {sort_order.upper()}
-            """)
-        else:
-            # If search query provided
-            cursor.execute(f"""
-                SELECT 
-                    b.book_id, 
-                    b.title, 
-                    b.issue, 
-                    b.page_length,
-                    GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors,
-                    b.cover_url
-                FROM Book b
-                LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
-                LEFT JOIN Author a ON wb.author_id = a.author_id
-                WHERE b.title = %s
-                GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
-                ORDER BY b.title {sort_order.upper()}
-            """, (search_query,))
+        # Base query with username filtering
+        base_query = f"""
+            SELECT 
+                b.book_id, 
+                b.title, 
+                b.issue, 
+                b.page_length,
+                b.cover_url,
+                GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors
+            FROM Book b
+            LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+            LEFT JOIN Author a ON wb.author_id = a.author_id
+            WHERE b.user_id = %s
+        """
 
+        # Add search filter if given
+        params = [username]
+        if search_query:
+            base_query += " AND b.title LIKE %s"
+            params.append(search_query + '%')
+
+        base_query += f"""
+            GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
+            ORDER BY b.title {sort_order.upper()}
+        """
+
+        cursor.execute(base_query, params)
         books = cursor.fetchall()
         cursor.close()
 
-        formatted_books = []
-        for book in books:
-            formatted_books.append({
-                "id": book["book_id"],
-                "title": book["title"],
-                "author": book["authors"] or "Unknown Author",
-                "coverUrl": book["cover_url"] or "/placeholder.svg?height=192&width=128",
-                "letter": book["title"][0].upper() if book["title"] else "A"
-            })
+        formatted_books = [{
+            "id": b["book_id"],
+            "title": b["title"],
+            "author": b["authors"] or "Unknown Author",
+            "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
+            "letter": b["title"][0].upper() if b["title"] else "?"
+        } for b in books]
 
         return jsonify({
             "status": "success",
@@ -508,7 +503,7 @@ def sort_books():
     except Exception as e:
         print(f"❌ Server error during search: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-    
+
 
 @app.route('/api/star', methods=['POST'])
 def star_book():
@@ -575,10 +570,16 @@ def filter_books_by_page_range():
     try:
         min_pages = request.args.get('min', type=int)
         max_pages = request.args.get('max', type=int)
+        username = request.args.get('username', '').strip()
+
+
+        if not username:
+            return jsonify({"status": "error", "message": "Username is required"}), 400
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
+        # Filter books owned by this user in the given page range
         query = """
             SELECT 
                 b.book_id, b.title, b.issue, b.page_length, b.cover_url,
@@ -586,11 +587,49 @@ def filter_books_by_page_range():
             FROM Book b
             LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
             LEFT JOIN Author a ON wb.author_id = a.author_id
-            WHERE b.page_length BETWEEN %s AND %s
+            WHERE b.page_length BETWEEN %s AND %s AND b.user_id = %s
             GROUP BY b.book_id
             ORDER BY b.page_length ASC
         """
-        cursor.execute(query, (min_pages, max_pages))
+        cursor.execute(query, (min_pages, max_pages, username))
+        books = cursor.fetchall()
+
+        formatted_books = [{
+            "id": b["book_id"],
+            "title": b["title"],
+            "author": b["authors"] or "Unknown",
+            "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
+            "letter": b["title"][0].upper() if b["title"] else "?"
+        } for b in books]
+
+        return jsonify({"status": "success", "books": formatted_books})
+
+    except Exception as e:
+        print("❌ Page range filter error:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/books/letter/<letter>')
+def filter_books_by_letter(letter):
+    try:
+        username = request.args.get("username")
+        if not username:
+            return jsonify({"status": "error", "message": "Missing username"}), 400
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        query = """
+            SELECT b.book_id, b.title, b.issue, b.page_length, b.cover_url,
+                   GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors
+            FROM Book b
+            JOIN User u ON b.user_id = u.user_id
+            LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+            LEFT JOIN Author a ON wb.author_id = a.author_id
+            WHERE u.username = %s AND b.title LIKE %s
+            GROUP BY b.book_id
+            ORDER BY b.title ASC
+        """
+        cursor.execute(query, (username, f"{letter}%"))
         books = cursor.fetchall()
 
         formatted_books = [{
@@ -604,7 +643,45 @@ def filter_books_by_page_range():
         return jsonify({"status": "success", "books": formatted_books})
     
     except Exception as e:
-        print("❌ Page range filter error:", e)
+        print("❌ Filter letter error:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/books/all')
+def get_all_books_by_user():
+    try:
+        username = request.args.get("username")
+        if not username:
+            return jsonify({"status": "error", "message": "Missing username"}), 400
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        query = """
+            SELECT b.book_id, b.title, b.issue, b.page_length, b.cover_url,
+                   GROUP_CONCAT(DISTINCT a.name SEPARATOR ', ') AS authors
+            FROM Book b
+            JOIN User u ON b.user_id = u.user_id
+            LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+            LEFT JOIN Author a ON wb.author_id = a.author_id
+            WHERE u.username = %s
+            GROUP BY b.book_id
+            ORDER BY b.title ASC
+        """
+        cursor.execute(query, (username,))
+        books = cursor.fetchall()
+
+        formatted_books = [{
+            "id": b["book_id"],
+            "title": b["title"],
+            "author": b["authors"] or "Unknown",
+            "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
+            "letter": b["title"][0].upper() if b["title"] else "?"
+        } for b in books]
+
+        return jsonify({"status": "success", "books": formatted_books})
+    
+    except Exception as e:
+        print("❌ Get all books error:", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -642,3 +719,4 @@ if __name__ == "__main__":
     print("\nServer starting on http://localhost:5000")
     
     app.run(port=5000, debug=True)
+

@@ -2,9 +2,20 @@
 
 import { useEffect, useState } from "react";
 
+type Book = {
+  id: number;
+  title: string;
+  author: string;
+  coverUrl: string;
+  letter: string;
+};
+
 function Home() {
   const [message, setMessage] = useState("Loading...");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [activeFilter, setActiveFilter] = useState("ALL");
 
+  // Greeting check
   useEffect(() => {
     fetch("http://localhost:5000/api/hello")
       .then(res => res.json())
@@ -12,9 +23,52 @@ function Home() {
       .catch(() => setMessage("Failed to fetch"));
   }, []);
 
+  // Fetch all books for current user
+  const fetchAllBooksForUser = async () => {
+    const username = localStorage.getItem("username");
+    if (!username) return;
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/get_all_books_by_user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+
+      const data = await res.json();
+      setBooks(data.books || []);
+    } catch (error) {
+      console.error("❌ Error fetching all books:", error);
+    }
+  };
+
+  // Filter books by starting letter
+  const handleAlphabetFilter = async (letter: string) => {
+    const username = localStorage.getItem("username");
+    if (!username) return;
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/filter_books_by_letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ letter, username }),
+      });
+
+      const data = await res.json();
+      setBooks(data.books || []);
+    } catch (error) {
+      console.error("❌ Error filtering books:", error);
+    }
+  };
+
+  // Trigger fetch on active filter change
   useEffect(() => {
-    fetchBooks('', sortOrder)
-  }, [])
+    if (activeFilter === "ALL") {
+      fetchAllBooksForUser();
+    } else {
+      handleAlphabetFilter(activeFilter);
+    }
+  }, [activeFilter]);
 
 
   return (
@@ -48,8 +102,6 @@ export default function Component() {
     publisher: "",  // <-- ADD THIS
     starred: ""
   });
-
-
 
 
   const navItems = [
@@ -107,7 +159,7 @@ export default function Component() {
     };
 
     try {
-      const user_id = localStorage.getItem('user_id'); 
+      const user_id = localStorage.getItem('user_id');
       const response = await fetch("http://127.0.0.1:5000/api/books", {
         method: "POST",
         headers: {
@@ -161,9 +213,10 @@ export default function Component() {
         // Optional: fetch all books or show message when search is empty
         return;
       }
+      const username = localStorage.getItem("user_id");
 
       const response = await fetch(
-        `http://localhost:5000/api/books/search?query=${encodeURIComponent(searchQuery)}`
+        `http://localhost:5000/api/books/search?query=${encodeURIComponent(searchQuery)}&username=${encodeURIComponent(username)}`
       );
 
       if (response.ok) {
@@ -185,7 +238,8 @@ export default function Component() {
 
   const fetchBooks = async (query = '', sort = 'asc') => {
     try {
-      const response = await fetch(`http://localhost:5000/api/books/sort?query=${encodeURIComponent(query)}&sort=${sort}`);
+      const username = localStorage.getItem("user_id");
+      const response = await fetch(`http://localhost:5000/api/books/sort?query=${encodeURIComponent(query)}&sort=${sort}&username=${encodeURIComponent(username)}`);
       const data = await response.json();
       if (data.status === 'success') {
         setBooks(data.books);
@@ -595,8 +649,9 @@ export default function Component() {
   const [maxPages, setMaxPages] = useState('');
   const handlePageRangeFilter = async (min: number, max: number) => {
     try {
+      const username = localStorage.getItem("user_id");
       const response = await fetch(
-        `http://127.0.0.1:5000/api/books/page-range?min=${min}&max=${max}`
+        `http://127.0.0.1:5000/api/books/page-range?min=${min}&max=${max}&username=${username}`
       );
       const data = await response.json();
       if (data.status === "success") {
@@ -662,7 +717,43 @@ export default function Component() {
 
   const [popupVisibleFor, setPopupVisibleFor] = useState(null); // book ID for which popup is visible
 
+  const fetchAllBooksForUser = async () => {
+    try {
+      const username = localStorage.getItem("username"); // assuming you store it on login
+      const res = await fetch("http://127.0.0.1:5000/api/get_all_books_by_user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username }),
+      });
+  
+      const data = await res.json();
+      setBooks(data.books); // Assuming the response is { books: [...] }
+    } catch (error) {
+      console.error("Error fetching all books for user:", error);
+    }
+  };
+  
 
+  const handleAlphabetFilter = async (letter: string) => {
+    try {
+      const username = localStorage.getItem("username");
+      const res = await fetch("http://127.0.0.1:5000/api/filter_books_by_letter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ letter, username }),
+      });
+  
+      const data = await res.json();
+      setBooks(data.books); // or adjust to your response shape
+    } catch (error) {
+      console.error("Error filtering books:", error);
+    }
+  };
+  
 
 
   return (
@@ -892,7 +983,7 @@ export default function Component() {
                   </div>
                 )}
               </div>
-            </div>
+            </div>;
 
 
 
@@ -952,8 +1043,8 @@ export default function Component() {
           <div style={styles.bookGrid}>
             {books
               .filter((book) => {
-                if (activeFilter === "ALL") return true
-                return book.letter === activeFilter
+                const isMatch = activeFilter === "ALL" || book.letter === activeFilter;
+                return isMatch;
               })
               .map((book) => (
                 // <div key={book.id} style={styles.bookCard}>
