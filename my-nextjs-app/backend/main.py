@@ -292,6 +292,64 @@ def login():
         return response, 200
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
+    
+
+@app.route('/api/change_password', methods=['POST'])
+def change_password():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not all([user_id, current_password, new_password]):
+            return jsonify({
+                "status": "error", 
+                "message": "User ID, current password, and new password are required"
+            }), 400
+        
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # Check if current password is correct
+        cursor.execute("SELECT password FROM User WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({
+                "status": "error", 
+                "message": "User not found"
+            }), 404
+        
+        if user['password'] != current_password:
+            return jsonify({
+                "status": "error", 
+                "message": "Current password is incorrect"
+            }), 401
+        
+        # Update password
+        cursor.execute(
+            "UPDATE User SET password = %s WHERE user_id = %s",
+            (new_password, user_id)
+        )
+        db.commit()
+        cursor.close()
+        
+        return jsonify({
+            "status": "success", 
+            "message": "Password updated successfully"
+        }), 200
+        
+    except Error as err:
+        return jsonify({
+            "status": "error", 
+            "message": f"Database error: {err}"
+        }), 500
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "message": str(e)
+        }), 500
 
 
 @app.route('/api/books', methods=['POST'])
