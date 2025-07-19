@@ -793,6 +793,103 @@ def reading_stats():
     print("Fetched stats:", stats)
     return jsonify(stats)
 
+@app.route("/api/author-stats")
+def author_stats():
+    user_id = request.args.get("username")
+    if not user_id:
+        return jsonify({"error": "Missing user ID"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Fetch top 10 authors (by number of books added by current user)
+    cursor.execute("""
+        SELECT 
+            a.author_id,
+            a.name AS author_name,
+            COUNT(b.book_id) AS num_books
+        FROM Author a
+        JOIN WrittenBy wb ON a.author_id = wb.author_id
+        JOIN Book b ON b.book_id = wb.book_id
+        WHERE b.user_id = %s
+        GROUP BY a.author_id, a.name
+        ORDER BY num_books DESC
+        LIMIT 10
+    """, (user_id,))
+    top_authors = cursor.fetchall()
+
+    print(f"Found {len(top_authors)} authors for user {user_id}")
+
+    author_stats = []
+
+    for author in top_authors:
+        author_id = author["author_id"]
+        print(f"Processing author: {author['author_name']} (ID: {author_id})")
+
+        # Stats only for books added by current user with non-NULL page_length
+        cursor.execute("""
+            SELECT 
+                MIN(b.page_length) AS min_page_length,
+                MAX(b.page_length) AS max_page_length,
+                ROUND(AVG(b.page_length), 1) AS avg_page_length,
+                COUNT(b.book_id) AS books_with_pages
+            FROM Book b
+            JOIN WrittenBy wb ON b.book_id = wb.book_id
+            WHERE wb.author_id = %s AND b.user_id = %s AND b.page_length IS NOT NULL
+        """, (author_id, user_id))
+        page_stats = cursor.fetchone()
+
+        print(f"Page stats: {page_stats}")
+
+        # Only proceed if we have books with page lengths
+        if page_stats and page_stats['books_with_pages'] > 0:
+            min_page_length = page_stats['min_page_length']
+            max_page_length = page_stats['max_page_length']
+
+            # Title of shortest book
+            cursor.execute("""
+                SELECT b.title
+                FROM Book b
+                JOIN WrittenBy wb ON b.book_id = wb.book_id
+                WHERE wb.author_id = %s AND b.user_id = %s AND b.page_length = %s
+                LIMIT 1
+            """, (author_id, user_id, min_page_length))
+            min_book = cursor.fetchone()
+
+            # Title of longest book
+            cursor.execute("""
+                SELECT b.title
+                FROM Book b
+                JOIN WrittenBy wb ON b.book_id = wb.book_id
+                WHERE wb.author_id = %s AND b.user_id = %s AND b.page_length = %s
+                LIMIT 1
+            """, (author_id, user_id, max_page_length))
+            max_book = cursor.fetchone()
+
+            author_stats.append({
+                "author_name": author["author_name"],
+                "num_books": author["num_books"],
+                "avg_page_length": page_stats["avg_page_length"],
+                "min_book_title": min_book["title"] if min_book else "N/A",
+                "min_page_length": min_page_length,
+                "max_book_title": max_book["title"] if max_book else "N/A",
+                "max_page_length": max_page_length,
+            })
+        else:
+            # Author has books but none with page lengths
+            author_stats.append({
+                "author_name": author["author_name"],
+                "num_books": author["num_books"],
+                "avg_page_length": None,
+                "min_book_title": "N/A",
+                "min_page_length": None,
+                "max_book_title": "N/A",
+                "max_page_length": None,
+            })
+
+    print(f"Returning {len(author_stats)} author stats")
+    return jsonify(author_stats)
+
 if __name__ == "__main__":
     print("Starting Flask server...")
     print("Testing database connection...")

@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import HasReadPage from './HasReadPage';
 import ReadingStatsPage from './ReadingStatsPage';
+import AuthorStats from './authorStats';
+
 
 
 type Book = {
@@ -47,7 +49,8 @@ export default function Home() {
     "Support",
     "Settings",
     "HasRead",
-    "Reading Statistics"
+    "Reading Statistics",
+    "Author Stats"
   ];
 
   const alphabetFilters = [
@@ -645,6 +648,9 @@ export default function Home() {
 
       case "Reading Statistics":
         return <ReadingStatsPage />;
+
+      case "Author Stats":
+        return <AuthorStats />;
 
       case "My Collection":
         return (
