@@ -58,7 +58,7 @@ export default function RegisterPage() {
       <button onClick={handleRegister} style={{ width: '100%', padding: '10px' }}>Register</button>
       {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
       <p style={{ marginTop: '16px' }}>
-        Already have an account? <a href="/login" style={{ color: '#4bc1d2' }}>Login</a>
+        Already have an account? <a href="/" style={{ color: '#4bc1d2' }}>Login</a>
       </p>
     </div>
   )
