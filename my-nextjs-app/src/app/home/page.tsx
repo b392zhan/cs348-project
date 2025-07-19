@@ -46,7 +46,7 @@ export default function Home() {
     "Configurations",
     "Support",
     "Settings",
-    "Reading History",
+    "HasRead",
     "Reading Statistics"
   ];
 
