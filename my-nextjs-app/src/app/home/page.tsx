@@ -1,6 +1,8 @@
 'use client';
+import React, { useEffect, useState } from "react";
+import HasReadPage from './HasReadPage';
+import ReadingStatsPage from './ReadingStatsPage';
 
-import { useEffect, useState } from "react";
 
 type Book = {
   id: number;
@@ -8,12 +10,50 @@ type Book = {
   author: string;
   coverUrl: string;
   letter: string;
+  starred?: boolean;
 };
 
-function Home() {
+export default function Home() {
   const [message, setMessage] = useState("Loading...");
   const [books, setBooks] = useState<Book[]>([]);
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [activeNavItem, setActiveNavItem] = useState("Library");
+  const [showAddBookModal, setShowAddBookModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showTitleFilter, setShowTitleFilter] = useState(false);
+  const [showPageFilter, setShowPageFilter] = useState(false);
+  const [pageRange, setPageRange] = useState({ min: "", max: "" });
+  const [markingReadFor, setMarkingReadFor] = useState<number | null>(null);
+  const [reviewText, setReviewText] = useState("");
+  const [popupVisibleFor, setPopupVisibleFor] = useState<number | null>(null);
+
+  const [newBook, setNewBook] = useState({
+    title: "",
+    author: "",
+    authorDob: "",
+    issue: "",
+    pageLength: "",
+    coverUrl: "",
+    publisher: "",
+    starred: ""
+  });
+
+  const navItems = [
+    "Library",
+    "My Collection",
+    "Wish List",
+    "Configurations",
+    "Support",
+    "Settings",
+    "Reading History",
+    "Reading Statistics"
+  ];
+
+  const alphabetFilters = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "ALL"
+  ];
 
   // Greeting check
   useEffect(() => {
@@ -70,82 +110,7 @@ function Home() {
     }
   }, [activeFilter]);
 
-
-  return (
-    <main>
-      <h1>Flask says:</h1>
-      <p>{message}</p>
-    </main>
-  );
-}
-
-export default function Component() {
-  const [activeFilter, setActiveFilter] = useState("A")
-  const [activeNavItem, setActiveNavItem] = useState("Library")
-  const [showAddBookModal, setShowAddBookModal] = useState(false)
-  const [books, setBooks] = useState([
-    {
-      // id: 1,
-      // title: "Harry Potter and The Cursed Child",
-      // author: "J.K. Rowling",
-      // coverUrl: "/placeholder.svg?height=192&width=128",
-      // letter: "H",
-    },
-  ])
-  const [newBook, setNewBook] = useState({
-    title: "",
-    author: "",
-    authorDob: "",
-    issue: "",
-    pageLength: "",
-    coverUrl: "",
-    publisher: "",  // <-- ADD THIS
-    starred: ""
-  });
-
-
-  const navItems = [
-    "Library",
-    "My Collection",
-    "Wish List",
-    // "Table 1",
-    // "Table 2",
-    "Configurations",
-    "Support",
-    "Settings",
-  ]
-
-  const alphabetFilters = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
-    "ALL",
-  ]
-
-  const handleAddBook = async (e) => {
+  const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const firstLetter = newBook.title.charAt(0).toUpperCase();
@@ -173,7 +138,7 @@ export default function Component() {
           author_dob: newBook.authorDob,
           cover_url: newBook.coverUrl,
           publisher: newBook.publisher,
-          user_id: user_id  // <-- REQUIRED BY BACKEND
+          user_id: user_id
         }),
       });
 
@@ -196,21 +161,17 @@ export default function Component() {
       authorDob: "",
       issue: "",
       pageLength: "",
-      coverUrl: "/placeholder.svg?height=192&width=128",
-      publisher: "",  // reset field
+      coverUrl: "",
+      publisher: "",
+      starred: ""
     });
 
     setShowAddBookModal(false);
   };
 
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-
   const handleSearch = async () => {
     try {
       if (!searchQuery.trim()) {
-        // Optional: fetch all books or show message when search is empty
         return;
       }
       const username = localStorage.getItem("user_id");
@@ -222,19 +183,16 @@ export default function Component() {
       if (response.ok) {
         const data = await response.json();
         setBooks(data.books);
-        setActiveFilter("ALL"); // Reset alphabet filter when searching
+        setActiveFilter("ALL");
       } else {
         console.error("Search failed:", response.status);
-        setBooks([]); // Clear results if search fails
+        setBooks([]);
       }
     } catch (error) {
       console.error("Error searching books:", error);
-      setBooks([]); // Clear results on error
+      setBooks([]);
     }
   };
-
-
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
 
   const fetchBooks = async (query = '', sort = 'asc') => {
     try {
@@ -251,8 +209,21 @@ export default function Component() {
     }
   };
 
-
-
+  const handlePageRangeFilter = async (min: number, max: number) => {
+    try {
+      const username = localStorage.getItem("user_id");
+      const response = await fetch(
+        `http://127.0.0.1:5000/api/books/page-range?min=${min}&max=${max}&username=${username}`
+      );
+      const data = await response.json();
+      if (data.status === "success") {
+        setBooks(data.books);
+        setActiveFilter("ALL");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching books by page range:", error);
+    }
+  };
 
   const styles = {
     container: {
@@ -318,24 +289,6 @@ export default function Component() {
       flex: 1,
       maxWidth: "400px",
     },
-    searchInput: {
-      width: "100%",
-      padding: "8px 12px 8px 40px",
-      border: "1px solid #bbbbbb",
-      borderRadius: "6px",
-      backgroundColor: "#f6f6f6",
-      fontSize: "14px",
-      outline: "none",
-      color: "#333333"
-
-    },
-    searchIcon: {
-      position: "absolute" as const,
-      left: "12px",
-      top: "50%",
-      transform: "translateY(-50%)",
-      color: "#8a8a8a",
-    },
     userSection: {
       display: "flex",
       alignItems: "center",
@@ -398,11 +351,6 @@ export default function Component() {
       fontSize: "12px",
       color: "#666666",
     },
-    controls: {
-      display: "flex",
-      alignItems: "center",
-      gap: "16px",
-    },
     button: {
       padding: "8px 16px",
       border: "1px solid #bbbbbb",
@@ -414,11 +362,6 @@ export default function Component() {
       alignItems: "center",
       gap: "8px",
       transition: "all 0.2s",
-    },
-    primaryButton: {
-      backgroundColor: "#4bc1d2",
-      color: "white",
-      border: "1px solid #4bc1d2",
     },
     bookSearchContainer: {
       position: "relative" as const,
@@ -434,6 +377,13 @@ export default function Component() {
       fontSize: "16px",
       outline: "none",
       color: "#333333"
+    },
+    searchIcon: {
+      position: "absolute" as const,
+      left: "12px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      color: "#8a8a8a",
     },
     alphabetFilter: {
       display: "flex",
@@ -470,13 +420,8 @@ export default function Component() {
       gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
       gap: "24px",
     },
-    // bookCard: {
-    //   display: "flex",
-    //   flexDirection: "column" as const,
-    //   alignItems: "center",
-    // },
     bookCard: {
-      position: "relative",
+      position: "relative" as const,
       backgroundColor: "#fff",
       borderRadius: "12px",
       padding: "12px",
@@ -531,7 +476,6 @@ export default function Component() {
       transition: "all 0.2s",
       zIndex: 10,
     },
-    // Modal styles
     modalOverlay: {
       position: "fixed" as const,
       top: 0,
@@ -551,7 +495,7 @@ export default function Component() {
       width: "90%",
       maxWidth: "500px",
       maxHeight: "80vh",
-      overflowY: "auto",
+      overflowY: "auto" as const,
       padding: "16px",
       position: "relative" as const,
     },
@@ -599,11 +543,11 @@ export default function Component() {
     formActions: {
       display: "flex",
       justifyContent: "flex-end",
-      gap: "8px", // was 12px
-      marginTop: "16px", // was 24px
+      gap: "8px",
+      marginTop: "16px",
     },
     cancelButton: {
-      padding: "8px 14px", // was 10px 16px
+      padding: "8px 14px",
       border: "1px solid #bbbbbb",
       borderRadius: "6px",
       backgroundColor: "white",
@@ -611,7 +555,7 @@ export default function Component() {
       fontSize: "14px",
     },
     submitButton: {
-      padding: "8px 14px", // was 10px 16px
+      padding: "8px 14px",
       border: "1px solid #4bc1d2",
       borderRadius: "6px",
       backgroundColor: "#4bc1d2",
@@ -643,33 +587,10 @@ export default function Component() {
       height: "100%",
       objectFit: "cover" as const,
     },
-  }
-
-  const [minPages, setMinPages] = useState('');
-  const [maxPages, setMaxPages] = useState('');
-  const handlePageRangeFilter = async (min: number, max: number) => {
-    try {
-      const username = localStorage.getItem("user_id");
-      const response = await fetch(
-        `http://127.0.0.1:5000/api/books/page-range?min=${min}&max=${max}&username=${username}`
-      );
-      const data = await response.json();
-      if (data.status === "success") {
-        setBooks(data.books);
-        setActiveFilter("ALL");
-      }
-    } catch (error) {
-      console.error("❌ Error fetching books by page range:", error);
-    }
   };
 
-  const [showTitleFilter, setShowTitleFilter] = useState(false);
-  const [showPageFilter, setShowPageFilter] = useState(false);
-
-  const [pageRange, setPageRange] = useState({ min: "", max: "" });
-
   const popupStyle = {
-    position: "absolute",
+    position: "absolute" as const,
     backgroundColor: "#fff",
     border: "2px solid #4bc1d2",
     borderRadius: "8px",
@@ -678,7 +599,7 @@ export default function Component() {
     zIndex: 1000,
     width: "240px",
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "column" as const,
     gap: "10px",
   };
 
@@ -688,20 +609,20 @@ export default function Component() {
     border: "1.5px solid #4bc1d2",
     fontSize: "14px",
     outline: "none",
-    color: "#white",
-    backgroundColor: "#333",
+    color: "#333",
+    backgroundColor: "#fff",
   };
 
   const submitBtnStyle = {
-    padding: "14px",            // larger padding for bigger buttons
+    padding: "14px",
     backgroundColor: "#4bc1d2",
     border: "none",
     borderRadius: "6px",
-    color: "black",             // changed from white to black for visibility
+    color: "white",
     cursor: "pointer",
-    fontWeight: "700",          // bolder font weight
-    fontSize: "16px",           // bigger font size
-    textAlign: "center",
+    fontWeight: "700",
+    fontSize: "16px",
+    textAlign: "center" as const,
   };
 
   const closeBtnStyle = {
@@ -711,50 +632,498 @@ export default function Component() {
     borderRadius: "6px",
     cursor: "pointer",
     fontSize: "16px",
-    color: "black",             // ensure text is black here too
+    color: "black",
     fontWeight: "600",
   };
 
-  const [popupVisibleFor, setPopupVisibleFor] = useState(null); // book ID for which popup is visible
+  // Render different content based on active nav item
+  // Updated renderContent function
+  const renderContent = () => {
+    switch (activeNavItem) {
+      case "HasRead":
+        return <HasReadPage />;
 
-  const fetchAllBooksForUser = async () => {
-    try {
-      const username = localStorage.getItem("username"); // assuming you store it on login
-      const res = await fetch("http://127.0.0.1:5000/api/get_all_books_by_user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username }),
-      });
-  
-      const data = await res.json();
-      setBooks(data.books); // Assuming the response is { books: [...] }
-    } catch (error) {
-      console.error("Error fetching all books for user:", error);
+      case "Reading Statistics":
+        return <ReadingStatsPage />;
+
+      case "My Collection":
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>My Collection</h2>
+            <p>Your personal book collection will be displayed here.</p>
+          </div>
+        );
+
+      case "Wish List":
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>Wish List</h2>
+            <p>Books you want to read will be displayed here.</p>
+          </div>
+        );
+
+      case "Configurations":
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>Configurations</h2>
+            <p>App settings and configurations will be displayed here.</p>
+          </div>
+        );
+
+      case "Support":
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>Support</h2>
+            <p>Support and help information will be displayed here.</p>
+          </div>
+        );
+
+      case "Settings":
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>Settings</h2>
+            <p>User settings will be displayed here.</p>
+          </div>
+        );
+
+      default: // "Library"
+        return (
+          <div style={styles.content}>
+            {/* Section Header */}
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionTitle}>
+                <h2 style={styles.title}>Books</h2>
+                <div style={styles.pagination}>
+                  <span style={styles.pageNumber}>1</span>
+                  <span style={{ color: "#8a8a8a" }}>›</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              position: 'relative',
+              marginBottom: '24px',
+              maxWidth: '600px'
+            }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "16px",
+                }}
+              >
+                {/* Search bar container */}
+                <div style={styles.bookSearchContainer}>
+                  <div style={styles.searchIcon}>🔍</div>
+                  <input
+                    type="text"
+                    placeholder="Search book title"
+                    style={styles.bookSearchInput}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                </div>
+
+                {/* Filter by Title */}
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setShowTitleFilter(true)}
+                    style={{
+                      ...styles.button,
+                      fontSize: "18px",
+                      color: "black",
+                      fontWeight: "600",
+                      padding: "14px 24px",
+                      minWidth: "150px",
+                      height: "48px",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    🔤 Filter by Title
+                  </button>
+                  {showTitleFilter && (
+                    <div
+                      style={{
+                        ...popupStyle,
+                        top: "100%",
+                        left: 0,
+                        marginTop: "6px",
+                        width: "240px",
+                        backgroundColor: "#ffffff",
+                        borderColor: "#4bc1d2",
+                        color: "#333",
+                        boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
+                      }}
+                    >
+                      <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
+                        Sort by Title
+                      </h4>
+                      <button
+                        onClick={() => {
+                          setSortOrder("asc");
+                          setShowTitleFilter(false);
+                          fetchBooks(searchQuery, "asc");
+                        }}
+                        style={submitBtnStyle}
+                      >
+                        Ascending ↑
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSortOrder("desc");
+                          setShowTitleFilter(false);
+                          fetchBooks(searchQuery, "desc");
+                        }}
+                        style={submitBtnStyle}
+                      >
+                        Descending ↓
+                      </button>
+                      <button onClick={() => setShowTitleFilter(false)} style={closeBtnStyle}>
+                        Close
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter by Page */}
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setShowPageFilter(true)}
+                    style={{
+                      ...styles.button,
+                      fontSize: "18px",
+                      color: "black",
+                      fontWeight: "600",
+                      padding: "14px 24px",
+                      minWidth: "150px",
+                      height: "48px",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    📄 Filter by Page
+                  </button>
+                  {showPageFilter && (
+                    <div
+                      style={{
+                        ...popupStyle,
+                        top: "100%",
+                        left: 0,
+                        marginTop: "6px",
+                        width: "240px",
+                        backgroundColor: "#ffffff",
+                        borderColor: "#4bc1d2",
+                        color: "#333",
+                        boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
+                      }}
+                    >
+                      <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
+                        Filter by Page Range
+                      </h4>
+                      <input
+                        type="number"
+                        placeholder="Min pages"
+                        value={pageRange.min}
+                        onChange={(e) =>
+                          setPageRange({ ...pageRange, min: e.target.value })
+                        }
+                        style={popupInputStyle}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Max pages"
+                        value={pageRange.max}
+                        onChange={(e) =>
+                          setPageRange({ ...pageRange, max: e.target.value })
+                        }
+                        style={popupInputStyle}
+                      />
+                      <button
+                        onClick={() => {
+                          handlePageRangeFilter(Number(pageRange.min), Number(pageRange.max));
+                          setShowPageFilter(false);
+                        }}
+                        style={submitBtnStyle}
+                      >
+                        Submit
+                      </button>
+                      <button onClick={() => setShowPageFilter(false)} style={closeBtnStyle}>
+                        Close
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {searchQuery && books.length === 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  padding: '10px',
+                  backgroundColor: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '0 0 6px 6px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  zIndex: 10,
+                  color: "#333333"
+                }}>
+                  No books found with the exact title "{searchQuery}"
+                </div>
+              )}
+            </div>
+
+            {/* Alphabet Filter */}
+            <div style={styles.alphabetFilter}>
+              {alphabetFilters.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => setActiveFilter(letter)}
+                  style={{
+                    ...styles.filterButton,
+                    ...(activeFilter === letter ? styles.filterButtonActive : styles.filterButtonInactive),
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeFilter !== letter) {
+                      e.currentTarget.style.color = "#03151e"
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeFilter !== letter) {
+                      e.currentTarget.style.color = "#666666"
+                    }
+                  }}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Letter Display */}
+            <div style={styles.activeLetterSection}>
+              <h3 style={styles.activeLetter}>{activeFilter === "ALL" ? "All Books" : activeFilter}</h3>
+            </div>
+
+            {/* Book Grid */}
+            <div style={styles.bookGrid}>
+              {books
+                .filter((book) => {
+                  const isMatch = activeFilter === "ALL" || book.letter === activeFilter;
+                  return isMatch;
+                })
+                .map((book) => (
+                  <div key={book.id} style={styles.bookCard}>
+                    {/* Star icon at top-right */}
+                    <div
+                      onClick={() => setMarkingReadFor(book.id)}
+                      style={{
+                        position: "absolute",
+                        bottom: "8px",
+                        right: "8px",
+                        cursor: "pointer",
+                        fontSize: "20px",
+                        color: "#4bc1d2",
+                      }}
+                      title="Mark as Read"
+                    >
+                      ✅
+                    </div>
+
+                    {/* Book Cover */}
+                    <div style={styles.bookCover}>
+                      <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
+                    </div>
+
+                    {/* Book Info */}
+                    <div style={styles.bookInfo}>
+                      <h4 style={styles.bookTitle}>{book.title}</h4>
+                      <p style={styles.bookAuthor}>{book.author}</p>
+                    </div>
+
+                    {markingReadFor === book.id && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "40px",
+                          right: "10px",
+                          backgroundColor: "#fff",
+                          border: "1px solid #000",
+                          borderRadius: "8px",
+                          padding: "12px",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                          zIndex: 100,
+                          width: "220px",
+                        }}
+                      >
+                        <textarea
+                          placeholder="Write a short review"
+                          value={reviewText}
+                          onChange={(e) => setReviewText(e.target.value)}
+                          style={{ width: "100%", height: "60px", marginBottom: "10px" }}
+                        />
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const username = localStorage.getItem('user_id');
+                                const res = await fetch(`http://127.0.0.1:5000/api/mark-as-read?username=${username}`, {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    book_id: book.id,
+                                    review: reviewText,
+                                  }),
+                                });
+
+                                const result = await res.json();
+                                console.log(result);
+
+                                setMarkingReadFor(null);
+                                setReviewText("");
+                              } catch (error) {
+                                console.error("Error marking book as read:", error);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: "#4bc1d2",
+                              color: "#fff",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => {
+                              setMarkingReadFor(null);
+                              setReviewText("");
+                            }}
+                            style={{
+                              backgroundColor: "#888",
+                              color: "#fff",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Star Confirmation Popup */}
+                    {popupVisibleFor === book.id && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "40px",
+                          right: "10px",
+                          backgroundColor: "#fff",
+                          border: "1px solid #000",
+                          borderRadius: "8px",
+                          padding: "12px",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                          zIndex: 100,
+                          width: "200px",
+                        }}
+                      >
+                        <p style={{ marginBottom: "12px", color: "#000", fontWeight: "500" }}>
+                          Do you want to star or unstar this book?
+                        </p>
+
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await fetch("http://127.0.0.1:5000/api/star", {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    book_id: book.id,
+                                    starred: true,
+                                  }),
+                                });
+
+                                const result = await res.json();
+                                console.log(result);
+
+                                const updatedBooks = books.map((b) =>
+                                  b.id === book.id ? { ...b, starred: true } : b
+                                );
+                                setBooks(updatedBooks);
+                                setPopupVisibleFor(null);
+                              } catch (error) {
+                                console.error("Error starring book:", error);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: "#4bc1d2",
+                              color: "#fff",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Star
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await fetch("http://127.0.0.1:5000/api/unstar", {
+                                  method: "DELETE",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    book_id: book.id,
+                                  }),
+                                });
+
+                                const result = await res.json();
+                                console.log(result);
+
+                                const updatedBooks = books.map((b) =>
+                                  b.id === book.id ? { ...b, starred: false } : b
+                                );
+                                setBooks(updatedBooks);
+                                setPopupVisibleFor(null);
+                              } catch (error) {
+                                console.error("Error unstarring book:", error);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: "#888",
+                              color: "#fff",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Unstar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        );
     }
   };
-  
-
-  const handleAlphabetFilter = async (letter: string) => {
-    try {
-      const username = localStorage.getItem("username");
-      const res = await fetch("http://127.0.0.1:5000/api/filter_books_by_letter", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ letter, username }),
-      });
-  
-      const data = await res.json();
-      setBooks(data.books); // or adjust to your response shape
-    } catch (error) {
-      console.error("Error filtering books:", error);
-    }
-  };
-  
-
 
   return (
     <div style={styles.container}>
@@ -763,7 +1132,6 @@ export default function Component() {
         <div style={styles.logo}>
           <h1 style={styles.logoText}>SHELFIE</h1>
         </div>
-
         <nav style={styles.nav}>
           {navItems.map((item) => (
             <button
@@ -775,16 +1143,15 @@ export default function Component() {
               }}
               onMouseEnter={(e) => {
                 if (activeNavItem !== item) {
-                  e.currentTarget.style.backgroundColor = "#dedede"
+                  e.currentTarget.style.backgroundColor = "#f0f0f0";
                 }
               }}
               onMouseLeave={(e) => {
                 if (activeNavItem !== item) {
-                  e.currentTarget.style.backgroundColor = "transparent"
+                  e.currentTarget.style.backgroundColor = "transparent";
                 }
               }}
             >
-              {item === "Library" && activeNavItem === item && <span style={{ marginRight: "8px" }}>→</span>}
               {item}
             </button>
           ))}
@@ -794,438 +1161,38 @@ export default function Component() {
       {/* Main Content */}
       <div style={styles.mainContent}>
         {/* Header */}
-        <header style={styles.header}>
-          <div style={styles.searchContainer}>
-            {/* <div style={styles.searchIcon}>🔍</div> */}
-            {/* <input type="text" placeholder="Search" style={styles.searchInput} /> */}
-          </div>
-
+        <div style={styles.header}>
+          <div style={styles.searchContainer}></div>
           <div style={styles.userSection}>
-            <span style={styles.userText}>User</span>
-            <span style={styles.userSubText}>Account Menu</span>
+            <div>
+              <div style={styles.userText}>Welcome back!</div>
+              <div style={styles.userSubText}>Manage your library</div>
+            </div>
             <div style={styles.avatar}>U</div>
           </div>
-        </header>
-
-        {/* Content Area */}
-        <div style={styles.content}>
-          {/* Section Header */}
-          <div style={styles.sectionHeader}>
-            <div style={styles.sectionTitle}>
-              <h2 style={styles.title}>Books</h2>
-              <div style={styles.pagination}>
-                <span style={styles.pageNumber}>1</span>
-                <span style={{ color: "#8a8a8a" }}>›</span>
-              </div>
-            </div>
-
-
-
-          </div>
-
-
-          <div style={{
-            position: 'relative',
-            marginBottom: '24px',
-            maxWidth: '600px'
-          }}>
-
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "16px",
-              }}
-            >
-              {/* Search bar container */}
-              <div style={styles.bookSearchContainer}>
-                <div style={styles.searchIcon}>🔍</div>
-                <input
-                  type="text"
-                  placeholder="Search book title"
-                  style={styles.bookSearchInput}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                />
-              </div>
-
-              {/* Filter by Title */}
-              {/* Filter by Title */}
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setShowTitleFilter(true)}
-                  style={{
-                    ...styles.button,
-                    fontSize: "18px",
-                    color: "black",
-                    fontWeight: "600",
-                    padding: "14px 24px",
-                    minWidth: "150px",
-                    height: "48px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  🔤 Filter by Title
-                </button>
-                {showTitleFilter && (
-                  <div
-                    style={{
-                      ...popupStyle,
-                      top: "100%",
-                      left: 0,
-                      marginTop: "6px",
-                      width: "240px",
-                      backgroundColor: "#ffffff",
-                      borderColor: "#4bc1d2",
-                      color: "#333",
-                      boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
-                    }}
-                  >
-                    <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
-                      Sort by Title
-                    </h4>
-                    <button
-                      onClick={() => {
-                        setSortOrder("asc");
-                        setShowTitleFilter(false);
-                        fetchBooks(searchQuery, "asc");
-                      }}
-                      style={submitBtnStyle}
-                    >
-                      Ascending ↑
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSortOrder("desc");
-                        setShowTitleFilter(false);
-                        fetchBooks(searchQuery, "desc");
-                      }}
-                      style={submitBtnStyle}
-                    >
-                      Descending ↓
-                    </button>
-                    <button onClick={() => setShowTitleFilter(false)} style={closeBtnStyle}>
-                      Close
-                    </button>
-                  </div>
-                )}
-              </div>
-
-
-              {/* Filter by Page */}
-              <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setShowPageFilter(true)}
-                  style={{
-                    ...styles.button,
-                    fontSize: "18px",
-                    color: "black",
-                    fontWeight: "600",
-                    padding: "14px 24px",
-                    minWidth: "150px",
-                    height: "48px",
-                    borderRadius: "8px",
-                  }}
-
-                >
-                  📄 Filter by Page
-                </button>
-                {showPageFilter && (
-                  <div
-                    style={{
-                      ...popupStyle,
-                      top: "100%",
-                      left: 0,
-                      marginTop: "6px",
-                      width: "240px",
-                      backgroundColor: "#ffffff",
-                      borderColor: "#4bc1d2",
-                      color: "#333",
-                      boxShadow: "0 4px 12px rgba(75,193,210,0.3)",
-                    }}
-                  >
-                    <h4 style={{ margin: 0, marginBottom: "8px", color: "#0d4a58" }}>
-                      Filter by Page Range
-                    </h4>
-                    <input
-                      type="number"
-                      placeholder="Min pages"
-                      value={pageRange.min}
-                      onChange={(e) =>
-                        setPageRange({ ...pageRange, min: e.target.value })
-                      }
-                      style={popupInputStyle}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Max pages"
-                      value={pageRange.max}
-                      onChange={(e) =>
-                        setPageRange({ ...pageRange, max: e.target.value })
-                      }
-                      style={popupInputStyle}
-                    />
-                    <button
-                      onClick={() => {
-                        handlePageRangeFilter(Number(pageRange.min), Number(pageRange.max));
-                        setShowPageFilter(false);
-                      }}
-                      style={submitBtnStyle}
-                    >
-                      Submit
-                    </button>
-                    <button onClick={() => setShowPageFilter(false)} style={closeBtnStyle}>
-                      Close
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-
-
-
-
-            {searchQuery && books.length === 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                padding: '10px',
-                backgroundColor: '#fff',
-                border: '1px solid #eee',
-                borderRadius: '0 0 6px 6px',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                zIndex: 10,
-                color: "#333333"
-              }}>
-                No books found with the exact title "{searchQuery}"
-              </div>
-            )}
-          </div>
-
-          {/* Alphabet Filter */}
-          <div style={styles.alphabetFilter}>
-            {alphabetFilters.map((letter) => (
-              <button
-                key={letter}
-                onClick={() => setActiveFilter(letter)}
-                style={{
-                  ...styles.filterButton,
-                  ...(activeFilter === letter ? styles.filterButtonActive : styles.filterButtonInactive),
-                }}
-                onMouseEnter={(e) => {
-                  if (activeFilter !== letter) {
-                    e.currentTarget.style.color = "#03151e"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeFilter !== letter) {
-                    e.currentTarget.style.color = "#666666"
-                  }
-                }}
-              >
-                {letter}
-              </button>
-            ))}
-          </div>
-
-          {/* Active Letter Display */}
-          <div style={styles.activeLetterSection}>
-            <h3 style={styles.activeLetter}>{activeFilter === "ALL" ? "All Books" : activeFilter}</h3>
-          </div>
-
-          {/* Book Grid */}
-          <div style={styles.bookGrid}>
-            {books
-              .filter((book) => {
-                const isMatch = activeFilter === "ALL" || book.letter === activeFilter;
-                return isMatch;
-              })
-              .map((book) => (
-                // <div key={book.id} style={styles.bookCard}>
-                //   <div style={styles.bookCover}>
-                //     <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
-                //   </div>
-                //   <div style={styles.bookInfo}>
-                //     <h4 style={styles.bookTitle}>{book.title}</h4>
-                //     <p style={styles.bookAuthor}>{book.author}</p>
-                //   </div>
-                // </div>
-                <div key={book.id} style={styles.bookCard}>
-                  {/* Star icon at top-right */}
-                  <div
-                    onClick={() => setPopupVisibleFor(book.id)}
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "8px",
-                      cursor: "pointer",
-                      fontSize: "20px",
-                      color: book.starred ? "#f5b301" : "#ccc",
-                    }}
-                    title={book.starred ? "Starred" : "Click to star"}
-                  >
-                    ★
-                  </div>
-
-                  {/* Book Cover */}
-                  <div style={styles.bookCover}>
-                    <img src={book.coverUrl || "/placeholder.svg"} alt={book.title} style={styles.bookImage} />
-                  </div>
-
-                  {/* Book Info */}
-                  <div style={styles.bookInfo}>
-                    <h4 style={styles.bookTitle}>{book.title}</h4>
-                    <p style={styles.bookAuthor}>{book.author}</p>
-                  </div>
-
-                  {/* Star Confirmation Popup */}
-                  {popupVisibleFor === book.id && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "40px",
-                        right: "10px",
-                        backgroundColor: "#fff",
-                        border: "1px solid #000", // Changed line color to black
-                        borderRadius: "8px",
-                        padding: "12px",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                        zIndex: 100,
-                        width: "200px",
-                      }}
-                    >
-                      <p style={{ marginBottom: "12px", color: "#000", fontWeight: "500" }}>
-                        Do you want to star or unstar this book?
-                      </p>
-
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        {/* <button
-                          onClick={() => {
-                            const updatedBooks = books.map(b =>
-                              b.id === book.id ? { ...b, starred: true } : b
-                            );
-                            setBooks(updatedBooks);
-                            setPopupVisibleFor(null);
-                          }}
-                          style={{
-                            backgroundColor: "#4bc1d2",
-                            color: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: "4px",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Star
-                        </button> */}
-
-                        <button
-                          onClick={async () => {
-                            try {
-                              const res = await fetch("http://127.0.0.1:5000/api/star", {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                  book_id: book.id,
-                                  starred: true,
-                                }),
-                              });
-
-                              const result = await res.json();
-                              console.log(result);
-
-                              const updatedBooks = books.map((b) =>
-                                b.id === book.id ? { ...b, starred: true } : b
-                              );
-                              setBooks(updatedBooks);
-                              setPopupVisibleFor(null);
-                            } catch (error) {
-                              console.error("Error starring book:", error);
-                            }
-                          }}
-                          style={{
-                            backgroundColor: "#4bc1d2",
-                            color: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: "4px",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Star
-                        </button>
-
-
-
-                        <button
-                          onClick={async () => {
-                            try {
-                              const res = await fetch("http://127.0.0.1:5000/api/unstar", {
-                                method: "DELETE",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                  book_id: book.id,
-                                }),
-                              });
-
-                              const result = await res.json();
-                              console.log(result);
-
-                              const updatedBooks = books.map((b) =>
-                                b.id === book.id ? { ...b, starred: false } : b
-                              );
-                              setBooks(updatedBooks);
-                              setPopupVisibleFor(null);
-                            } catch (error) {
-                              console.error("Error unstarring book:", error);
-                            }
-                          }}
-                          style={{
-                            backgroundColor: "#888",
-                            color: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: "4px",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Unstar
-                        </button>
-
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-
-              ))}
-          </div>
         </div>
+
+        {/* Dynamic Content based on active nav item */}
+        {renderContent()}
       </div>
 
-      {/* Floating Action Button */}
-      <button
-        style={styles.fab}
-        onClick={() => setShowAddBookModal(true)}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "#3da8b7"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "#4bc1d2"
-        }}
-      >
-        +
-      </button>
+      {/* Floating Action Button - only show on Library page */}
+      {activeNavItem === "Library" && (
+        <button
+          onClick={() => setShowAddBookModal(true)}
+          style={styles.fab}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+            e.currentTarget.style.boxShadow = "0 10px 20px rgba(0, 0, 0, 0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.15)";
+          }}
+        >
+          +
+        </button>
+      )}
 
       {/* Add Book Modal */}
       {showAddBookModal && (
@@ -1233,132 +1200,94 @@ export default function Component() {
           <div style={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>Add New Book</h3>
-              <button style={styles.closeButton} onClick={() => setShowAddBookModal(false)}>
+              <button onClick={() => setShowAddBookModal(false)} style={styles.closeButton}>
                 ×
               </button>
             </div>
-
-            <form style={styles.form} onSubmit={handleAddBook}>
-
-              {/* Book Title */}
+            <form onSubmit={handleAddBook} style={styles.form}>
               <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="bookTitle">
-                  Book Title
-                </label>
+                <label style={styles.label}>Title</label>
                 <input
-                  id="bookTitle"
                   type="text"
-                  style={styles.input}
                   value={newBook.title}
                   onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+                  style={styles.input}
                   required
                 />
               </div>
-
-              {/* Issue */}
               <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="bookIssue">Issue</label>
+                <label style={styles.label}>Author</label>
                 <input
-                  id="bookIssue"
                   type="text"
-                  style={styles.input}
-                  value={newBook.issue}
-                  onChange={(e) => setNewBook({ ...newBook, issue: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Page Length */}
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="pageLength">Page Length</label>
-                <input
-                  id="pageLength"
-                  type="number"
-                  style={styles.input}
-                  value={newBook.pageLength}
-                  onChange={(e) => setNewBook({ ...newBook, pageLength: e.target.value })}
-                  required
-                />
-              </div>
-
-              {/* Author Name */}
-              <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="bookAuthor">
-                  Author
-                </label>
-                <input
-                  id="bookAuthor"
-                  type="text"
-                  style={styles.input}
                   value={newBook.author}
                   onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+                  style={styles.input}
                   required
                 />
               </div>
-
-              {/* Author DOB */}
               <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="authorDob">Author Date of Birth</label>
+                <label style={styles.label}>Author Date of Birth</label>
                 <input
-                  id="authorDob"
                   type="date"
-                  style={styles.input}
                   value={newBook.authorDob}
                   onChange={(e) => setNewBook({ ...newBook, authorDob: e.target.value })}
-                  required
+                  style={styles.input}
                 />
               </div>
-              {/* Publisher */}
               <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="publisher">
-                  Publisher
-                </label>
+                <label style={styles.label}>Issue/Edition</label>
                 <input
-                  id="publisher"
                   type="text"
+                  value={newBook.issue}
+                  onChange={(e) => setNewBook({ ...newBook, issue: e.target.value })}
                   style={styles.input}
-                  value={newBook.publisher}
-                  onChange={(e) => setNewBook({ ...newBook, publisher: e.target.value })}
-                  required
                 />
               </div>
-
-
               <div style={styles.formGroup}>
-                <label style={styles.label} htmlFor="coverUrl">
-                  Cover Image URL (optional)
-                </label>
+                <label style={styles.label}>Page Length</label>
                 <input
-                  id="coverUrl"
-                  type="text"
+                  type="number"
+                  value={newBook.pageLength}
+                  onChange={(e) => setNewBook({ ...newBook, pageLength: e.target.value })}
                   style={styles.input}
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Cover URL</label>
+                <input
+                  type="url"
                   value={newBook.coverUrl}
                   onChange={(e) => setNewBook({ ...newBook, coverUrl: e.target.value })}
-                  placeholder="/placeholder.svg?height=192&width=128"
+                  style={styles.input}
+                  placeholder="https://example.com/cover.jpg"
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Publisher</label>
+                <input
+                  type="text"
+                  value={newBook.publisher}
+                  onChange={(e) => setNewBook({ ...newBook, publisher: e.target.value })}
+                  style={styles.input}
                 />
               </div>
 
-              {/* Preview section */}
-              <div style={styles.previewSection}>
-                <h4 style={styles.previewTitle}>Cover Preview</h4>
-                <div style={styles.previewCover}>
-                  <img
-                    src={newBook.coverUrl || "/placeholder.svg?height=192&width=128"}
-                    alt="Book cover preview"
-                    style={styles.previewImage}
-                    // onError={(e) => {
-                    //   e.currentTarget.src = "/placeholder.svg?height=192&width=128"
-                    //   setNewBook({ ...newBook, coverUrl: "/placeholder.svg?height=192&width=128" })
-                    // }}
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.svg?height=192&width=128"
-                    }}
-                  />
+              {/* Cover Preview */}
+              {newBook.coverUrl && (
+                <div style={styles.previewSection}>
+                  <div style={styles.previewTitle}>Cover Preview</div>
+                  <div style={styles.previewCover}>
+                    <img src={newBook.coverUrl} alt="Cover preview" style={styles.previewImage} />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div style={styles.formActions}>
-                <button type="button" style={styles.cancelButton} onClick={() => setShowAddBookModal(false)}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddBookModal(false)}
+                  style={styles.cancelButton}
+                >
                   Cancel
                 </button>
                 <button type="submit" style={styles.submitButton}>
@@ -1370,5 +1299,5 @@ export default function Component() {
         </div>
       )}
     </div>
-  )
+  );
 }

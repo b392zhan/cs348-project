@@ -684,6 +684,114 @@ def get_all_books_by_user():
         print("❌ Get all books error:", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+from flask import request, jsonify
+from datetime import date
+
+@app.route('/api/mark-as-read', methods=['POST'])
+def mark_as_read():
+    user_id = request.args.get("username")  # really user_id
+    data = request.get_json()
+    book_id = data.get("book_id")
+    review = data.get("review")
+
+    if not user_id or not book_id:
+        return jsonify({'error': 'Missing data'}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("""
+            INSERT INTO HasRead (user_id, book_id, date, review)
+            VALUES (%s, %s, CURDATE(), %s)
+        """, (user_id, book_id, review))
+
+        db.commit()
+        return jsonify({'message': 'Book marked as read'}), 200
+    except Exception as e:
+        print("❌ Error inserting:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/hasread')
+def get_has_read_books():
+    username = request.args.get("username")
+
+    if not username:
+        return jsonify({'error': 'Username required'}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT b.book_id, b.title, b.issue, b.page_length, h.review, h.date
+        FROM HasRead h
+        JOIN Book b ON h.book_id = b.book_id
+        JOIN User u ON h.user_id = u.user_id
+        WHERE u.user_id = %s
+    """, (username,))
+
+    results = cursor.fetchall()
+    return jsonify(results)
+
+
+@app.route("/api/reading-stats")
+def reading_stats():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user ID"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    query = """
+        SELECT 
+            COUNT(*) AS total_books,
+            ROUND(AVG(CASE WHEN b.page_length IS NOT NULL THEN b.page_length END), 1) AS avg_pages,
+            (
+                SELECT a.name
+                FROM Author a
+                JOIN WrittenBy wb ON a.author_id = wb.author_id
+                JOIN Book b2 ON b2.book_id = wb.book_id
+                JOIN HasRead hr2 ON hr2.book_id = b2.book_id
+                WHERE hr2.user_id = %s
+                GROUP BY a.author_id
+                ORDER BY COUNT(*) DESC
+                LIMIT 1
+            ) AS favorite_author,
+            (
+                SELECT b.title
+                FROM HasRead hr3
+                JOIN Book b ON b.book_id = hr3.book_id
+                WHERE hr3.user_id = %s
+                ORDER BY hr3.date ASC
+                LIMIT 1
+            ) AS first_book,
+            (
+                SELECT b.title
+                FROM HasRead hr4
+                JOIN Book b ON b.book_id = hr4.book_id
+                WHERE hr4.user_id = %s
+                ORDER BY hr4.hasread_id DESC
+                LIMIT 1
+            ) AS latest_book
+        FROM HasRead hr
+        JOIN Book b ON b.book_id = hr.book_id
+        WHERE hr.user_id = %s
+    """
+
+    cursor.execute(query, (user_id, user_id, user_id, user_id))
+    stats = cursor.fetchone()
+
+    # Convert avg_pages to float if it's not None
+    if stats and stats.get('avg_pages') is not None:
+        try:
+            stats['avg_pages'] = float(stats['avg_pages'])
+        except (ValueError, TypeError):
+            stats['avg_pages'] = None
+
+    print("Fetched stats:", stats)
+    return jsonify(stats)
 
 if __name__ == "__main__":
     print("Starting Flask server...")
