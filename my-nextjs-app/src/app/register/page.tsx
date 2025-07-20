@@ -26,40 +26,150 @@ export default function RegisterPage() {
     }
   }
 
+  const inputStyle = {
+    display: 'block',
+    width: '100%',
+    padding: '12px 16px',
+    marginBottom: '16px',
+    border: '2px solid #e3f2fd',
+    borderRadius: '8px',
+    fontSize: '16px',
+    backgroundColor: 'white',
+    transition: 'border-color 0.3s ease',
+    outline: 'none',
+    boxSizing: 'border-box'
+  }
+
+  const buttonStyle = {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: '#1976d2',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    boxSizing: 'border-box'
+  }
+
   return (
-    <div style={{ padding: '40px', maxWidth: '400px', margin: 'auto' }}>
-      <h2>Register</h2>
-      <input
-        placeholder="Full Name"
-        value={name}
-        onChange={e => setName(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-      />
-      <input
-        placeholder="Age"
-        type="number"
-        value={age}
-        onChange={e => setAge(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-      />
-      <input
-        placeholder="Username"
-        value={username}
-        onChange={e => setUsername(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-      />
-      <input
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-      />
-      <button onClick={handleRegister} style={{ width: '100%', padding: '10px' }}>Register</button>
-      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
-      <p style={{ marginTop: '16px' }}>
-        Already have an account? <a href="/" style={{ color: '#4bc1d2' }}>Login</a>
-      </p>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '40px',
+        borderRadius: '16px',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        maxWidth: '400px'
+      }}>
+        {/* Welcome Header */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1976d2',
+            margin: '0 0 8px 0'
+          }}>
+            Welcome to <strong>SHELFIE</strong>
+          </h1>
+          <p style={{
+            color: '#666',
+            fontSize: '16px',
+            margin: '0'
+          }}>
+            Create your account to get started
+          </p>
+        </div>
+
+        {/* Form */}
+        <div>
+          <input
+            placeholder="Full Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#1976d2'}
+            onBlur={e => e.target.style.borderColor = '#e3f2fd'}
+          />
+          <input
+            placeholder="Age"
+            type="number"
+            value={age}
+            onChange={e => setAge(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#1976d2'}
+            onBlur={e => e.target.style.borderColor = '#e3f2fd'}
+          />
+          <input
+            placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#1976d2'}
+            onBlur={e => e.target.style.borderColor = '#e3f2fd'}
+          />
+          <input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#1976d2'}
+            onBlur={e => e.target.style.borderColor = '#e3f2fd'}
+          />
+          
+          <button
+            onClick={handleRegister}
+            style={buttonStyle}
+            onMouseOver={e => e.target.style.backgroundColor = '#1565c0'}
+            onMouseOut={e => e.target.style.backgroundColor = '#1976d2'}
+          >
+            Register
+          </button>
+
+          {error && (
+            <div style={{
+              backgroundColor: '#ffebee',
+              color: '#c62828',
+              padding: '12px',
+              borderRadius: '8px',
+              marginTop: '16px',
+              border: '1px solid #ffcdd2'
+            }}>
+              {error}
+            </div>
+          )}
+
+          <p style={{
+            textAlign: 'center',
+            marginTop: '24px',
+            color: '#666',
+            fontSize: '14px'
+          }}>
+            Already have an account?{' '}
+            <a
+              href="/"
+              style={{
+                color: '#1976d2',
+                textDecoration: 'none',
+                fontWeight: '600'
+              }}
+            >
+              Login here
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
