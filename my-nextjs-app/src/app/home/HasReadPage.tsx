@@ -9,6 +9,7 @@ interface Book {
   page_length: number;
   review: string;
   date: string;
+  hasread_id?: number; // Add this if your API returns it
 }
 
 export default function HasReadPage() {
@@ -16,6 +17,9 @@ export default function HasReadPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'pages'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingReview, setEditingReview] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  const [savingReview, setSavingReview] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchHasReadBooks = async () => {
@@ -46,6 +50,59 @@ export default function HasReadPage() {
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  const handleEditClick = (bookId: number, currentReview: string) => {
+    setEditingReview(bookId);
+    setEditText(currentReview || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReview(null);
+    setEditText('');
+  };
+
+  const handleSaveReview = async (bookId: number) => {
+    const user_id = localStorage.getItem("user_id");
+    if (!user_id) return;
+
+    setSavingReview(bookId);
+
+    try {
+      // You'll need to create this endpoint in your Flask backend
+      const response = await fetch(`http://127.0.0.1:5000/api/hasread/review`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: parseInt(user_id),
+          book_id: bookId,
+          review: editText
+        })
+      });
+
+      if (response.ok) {
+        // Update the local state immediately for real-time effect
+        setBooks(prevBooks => 
+          prevBooks.map(book => 
+            book.book_id === bookId 
+              ? { ...book, review: editText }
+              : book
+          )
+        );
+        setEditingReview(null);
+        setEditText('');
+      } else {
+        console.error('Failed to update review');
+        alert('Failed to update review. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating review:', error);
+      alert('Error updating review. Please try again.');
+    } finally {
+      setSavingReview(null);
+    }
   };
 
   const sortedBooks = [...books].sort((a, b) => {
@@ -198,11 +255,30 @@ export default function HasReadPage() {
       borderTop: "1px solid #e2e8f0",
       paddingTop: "16px",
     },
+    reviewHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "8px",
+    },
     reviewLabel: {
       fontSize: "14px",
       fontWeight: "600",
       color: "#2d3748",
-      marginBottom: "8px",
+    },
+    editButton: {
+      backgroundColor: "#3182ce",
+      color: "white",
+      border: "none",
+      borderRadius: "6px",
+      padding: "4px 12px",
+      fontSize: "12px",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
+      fontWeight: "500",
+    },
+    editButtonHover: {
+      backgroundColor: "#2c5282",
     },
     reviewText: {
       backgroundColor: "#f7fafc",
@@ -217,6 +293,45 @@ export default function HasReadPage() {
       display: "flex",
       alignItems: "center",
     },
+    editTextarea: {
+      width: "100%",
+      minHeight: "80px",
+      padding: "12px",
+      border: "2px solid #3182ce",
+      borderRadius: "8px",
+      fontSize: "14px",
+      fontFamily: "inherit",
+      resize: "vertical" as const,
+      outline: "none",
+    },
+    editButtons: {
+      display: "flex",
+      gap: "8px",
+      marginTop: "12px",
+      justifyContent: "flex-end",
+    },
+    saveButton: {
+      backgroundColor: "#38a169",
+      color: "white",
+      border: "none",
+      borderRadius: "6px",
+      padding: "8px 16px",
+      fontSize: "14px",
+      cursor: "pointer",
+      fontWeight: "500",
+      transition: "all 0.2s ease",
+    },
+    cancelButton: {
+      backgroundColor: "#e53e3e",
+      color: "white",
+      border: "none",
+      borderRadius: "6px",
+      padding: "8px 16px",
+      fontSize: "14px",
+      cursor: "pointer",
+      fontWeight: "500",
+      transition: "all 0.2s ease",
+    },
     loadingSpinner: {
       display: "flex",
       justifyContent: "center",
@@ -230,6 +345,11 @@ export default function HasReadPage() {
       borderTop: "4px solid white",
       borderRadius: "50%",
       animation: "spin 1s linear infinite",
+    },
+    savingIndicator: {
+      fontSize: "12px",
+      color: "#3182ce",
+      fontStyle: "italic",
     },
   };
 
@@ -315,10 +435,58 @@ export default function HasReadPage() {
                 </div>
 
                 <div style={styles.reviewSection}>
-                  <div style={styles.reviewLabel}>Your Review:</div>
-                  <div style={styles.reviewText}>
-                    {book.review || "No review added yet"}
+                  <div style={styles.reviewHeader}>
+                    <div style={styles.reviewLabel}>Your Review:</div>
+                    {editingReview !== book.book_id && (
+                      <button
+                        style={styles.editButton}
+                        onClick={() => handleEditClick(book.book_id, book.review)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = styles.editButtonHover.backgroundColor;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = styles.editButton.backgroundColor;
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
+                    {savingReview === book.book_id && (
+                      <span style={styles.savingIndicator}>Saving...</span>
+                    )}
                   </div>
+
+                  {editingReview === book.book_id ? (
+                    <div>
+                      <textarea
+                        style={styles.editTextarea}
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        placeholder="Write your review here..."
+                        disabled={savingReview === book.book_id}
+                      />
+                      <div style={styles.editButtons}>
+                        <button
+                          style={styles.cancelButton}
+                          onClick={handleCancelEdit}
+                          disabled={savingReview === book.book_id}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          style={styles.saveButton}
+                          onClick={() => handleSaveReview(book.book_id)}
+                          disabled={savingReview === book.book_id}
+                        >
+                          {savingReview === book.book_id ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={styles.reviewText}>
+                      {book.review || "No review added yet"}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -238,8 +238,6 @@ def internal_error(error):
     return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 
-
-
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -453,10 +451,8 @@ def search_books():
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        if not username:
-            return jsonify({"status": "error", "message": "User not found"}), 404
 
-        # Search query filtered by user_id
+        # Fetch books matching search query for this user
         cursor.execute("""
             SELECT 
                 b.book_id, 
@@ -468,12 +464,17 @@ def search_books():
             FROM Book b
             LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
             LEFT JOIN Author a ON wb.author_id = a.author_id
-            WHERE b.title = %s AND b.user_id = %s
+            WHERE b.title LIKE %s AND b.user_id = %s
             GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
             ORDER BY b.title
-        """, (search_query, username))
+        """, (f"%{search_query}%", username))
 
         books = cursor.fetchall()
+
+        # Fetch all starred book IDs for this user
+        cursor.execute("SELECT book_id FROM Starred WHERE user_id = %s", (username,))
+        starred_books = {row["book_id"] for row in cursor.fetchall()}
+
         cursor.close()
 
         formatted_books = []
@@ -483,7 +484,8 @@ def search_books():
                 "title": book["title"],
                 "author": book["authors"] or "Unknown Author",
                 "coverUrl": book["cover_url"] or "/placeholder.svg?height=192&width=128",
-                "letter": book["title"][0].upper() if book["title"] else "A"
+                "letter": book["title"][0].upper() if book["title"] else "A",
+                "starred": book["book_id"] in starred_books
             })
 
         return jsonify({
@@ -540,6 +542,10 @@ def sort_books():
 
         cursor.execute(base_query, params)
         books = cursor.fetchall()
+        
+        cursor.execute("SELECT book_id FROM Starred WHERE user_id = %s", (username,))
+        starred_books = {row["book_id"] for row in cursor.fetchall()}
+
         cursor.close()
 
         formatted_books = [{
@@ -547,7 +553,9 @@ def sort_books():
             "title": b["title"],
             "author": b["authors"] or "Unknown Author",
             "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
-            "letter": b["title"][0].upper() if b["title"] else "?"
+            "letter": b["title"][0].upper() if b["title"] else "?",
+            "starred": b["book_id"] in starred_books
+            
         } for b in books]
 
         return jsonify({
@@ -567,23 +575,22 @@ def sort_books():
 def star_book():
     try:
         data = request.get_json()
+        username = request.args.get('username', '').strip()
         book_id = data.get('book_id')
         starred = data.get('starred', True)
 
-        if not book_id:
-            return jsonify({"status": "error", "message": "Missing book_id"}), 400
+        if not username or not book_id:
+            return jsonify({"status": "error", "message": "Missing user_id or book_id"}), 400
 
         db = get_db()
         cursor = db.cursor()
 
-        cursor.execute("SELECT MAX(user_id) FROM Starred")
-        max_uid = cursor.fetchone()[0] or 0
-        next_uid = max_uid + 1
-
-        cursor.execute(
-            "INSERT INTO Starred (user_id, book_id, starred) VALUES (%s, %s, %s)",
-            (next_uid, book_id, starred)
-        )
+        # Insert or update the record (if it already exists)
+        cursor.execute("""
+            INSERT INTO Starred (user_id, book_id, starred)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE starred = VALUES(starred)
+        """, (username, book_id, starred))
 
         db.commit()
         cursor.close()
@@ -598,19 +605,21 @@ def star_book():
 @app.route('/api/unstar', methods=['DELETE'])
 def unstar_book():
     try:
+        username = request.args.get('username', '').strip()
+        
         data = request.get_json()
         book_id = data.get('book_id')
 
-        if not book_id:
-            return jsonify({"status": "error", "message": "Missing book_id"}), 400
+        if not username or not book_id:
+            return jsonify({"status": "error", "message": "Missing user_id or book_id"}), 400
 
         db = get_db()
         cursor = db.cursor()
 
-        # Delete all star records for this book (regardless of user_id)
+        # Delete the star record for this user/book pair only
         cursor.execute(
-            "DELETE FROM Starred WHERE book_id = %s",
-            (book_id,)
+            "DELETE FROM Starred WHERE user_id = %s AND book_id = %s",
+            (username, book_id)
         )
 
         db.commit()
@@ -621,7 +630,6 @@ def unstar_book():
     except Exception as e:
         print(f"❌ Error unstarring book: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 @app.route('/api/books/page-range')
 def filter_books_by_page_range():
@@ -651,13 +659,17 @@ def filter_books_by_page_range():
         """
         cursor.execute(query, (min_pages, max_pages, username))
         books = cursor.fetchall()
+        
+        cursor.execute("SELECT book_id FROM Starred WHERE user_id = %s", (username,))
+        starred_books = {row["book_id"] for row in cursor.fetchall()}
 
         formatted_books = [{
             "id": b["book_id"],
             "title": b["title"],
             "author": b["authors"] or "Unknown",
             "coverUrl": b["cover_url"] or "/placeholder.svg?height=192&width=128",
-            "letter": b["title"][0].upper() if b["title"] else "?"
+            "letter": b["title"][0].upper() if b["title"] else "?",
+            "starred": b["book_id"] in starred_books
         } for b in books]
 
         return jsonify({"status": "success", "books": formatted_books})
@@ -947,6 +959,94 @@ def author_stats():
 
     print(f"Returning {len(author_stats)} author stats")
     return jsonify(author_stats)
+
+
+@app.route('/api/hasread/review', methods=['PUT'])
+def update_review():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or 'user_id' not in data or 'book_id' not in data:
+            return jsonify({'error': 'Missing required fields: user_id and book_id'}), 400
+        
+        user_id = data['user_id']
+        book_id = data['book_id']
+        review = data.get('review', '')  # Review can be empty
+        
+        # Connect to database
+        connection = get_db()
+        cursor = connection.cursor()
+        
+        # Update the review in the hasRead table
+        update_query = """
+        UPDATE hasRead 
+        SET review = %s 
+        WHERE user_id = %s AND book_id = %s
+        """
+        
+        cursor.execute(update_query, (review, user_id, book_id))
+        connection.commit()
+        
+        # Check if any rows were affected
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'No matching record found or no changes made'}), 404
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'message': 'Review updated successfully',
+            'user_id': user_id,
+            'book_id': book_id,
+            'review': review
+        }), 200
+        
+    except mysql.connector.Error as db_error:
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+# Alternative version if you want to use the hasread_id instead of user_id + book_id
+@app.route('/api/hasread/review/<int:hasread_id>', methods=['PUT'])
+def update_review_by_id(hasread_id):
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        review = data.get('review', '')
+        
+        # Connect to database
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Update the review in the hasRead table
+        update_query = "UPDATE hasRead SET review = %s WHERE hasread_id = %s"
+        
+        cursor.execute(update_query, (review, hasread_id))
+        connection.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'No matching record found'}), 404
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'message': 'Review updated successfully',
+            'hasread_id': hasread_id,
+            'review': review
+        }), 200
+        
+    except mysql.connector.Error as db_error:
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
 
 if __name__ == "__main__":
     print("Starting Flask server...")

@@ -639,67 +639,67 @@ export default function Home() {
     fontWeight: "600",
   };
 
-const [passwordChangeMessage, setPasswordChangeMessage] = useState("");
-const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-const handlePasswordChange = async (currentPassword, newPassword, confirmPassword) => {
-  setIsChangingPassword(true);
-  setPasswordChangeMessage("");
-  
-  // Client-side validation
-  if (newPassword !== confirmPassword) {
-    setPasswordChangeMessage("New passwords do not match");
-    setIsChangingPassword(false);
-    return;
-  }
-  
-  if (newPassword.length < 6) {
-    setPasswordChangeMessage("Password must be at least 6 characters");
-    setIsChangingPassword(false);
-    return;
-  }
-  
-  try {
-    const user_id = localStorage.getItem('user_id');
-    
-    if (!user_id) {
-      setPasswordChangeMessage("User not logged in");
+  const handlePasswordChange = async (currentPassword, newPassword, confirmPassword) => {
+    setIsChangingPassword(true);
+    setPasswordChangeMessage("");
+
+    // Client-side validation
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeMessage("New passwords do not match");
       setIsChangingPassword(false);
       return;
     }
-    
-    const response = await fetch("http://127.0.0.1:5000/api/change_password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: user_id,
-        current_password: currentPassword,
-        new_password: newPassword
-      }),
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-      setPasswordChangeMessage("Password updated successfully!");
-      // Clear the form - you can do this by resetting the form element
-      const form = document.querySelector('form[data-password-form]') as HTMLFormElement;
-      if (form) {
-        form.reset();
-      }
-    } else {
-      setPasswordChangeMessage(data.message || "Failed to update password");
+
+    if (newPassword.length < 6) {
+      setPasswordChangeMessage("Password must be at least 6 characters");
+      setIsChangingPassword(false);
+      return;
     }
-    
-  } catch (error) {
-    console.error("❌ Error changing password:", error);
-    setPasswordChangeMessage("Network error. Please try again.");
-  } finally {
-    setIsChangingPassword(false);
-  }
-};
+
+    try {
+      const user_id = localStorage.getItem('user_id');
+
+      if (!user_id) {
+        setPasswordChangeMessage("User not logged in");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      const response = await fetch("http://127.0.0.1:5000/api/change_password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: user_id,
+          current_password: currentPassword,
+          new_password: newPassword
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordChangeMessage("Password updated successfully!");
+        // Clear the form - you can do this by resetting the form element
+        const form = document.querySelector('form[data-password-form]') as HTMLFormElement;
+        if (form) {
+          form.reset();
+        }
+      } else {
+        setPasswordChangeMessage(data.message || "Failed to update password");
+      }
+
+    } catch (error) {
+      console.error("❌ Error changing password:", error);
+      setPasswordChangeMessage("Network error. Please try again.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   // Render different content based on active nav item
   // Updated renderContent function
@@ -747,118 +747,118 @@ const handlePasswordChange = async (currentPassword, newPassword, confirmPasswor
         );
 
       case "Settings":
-  return (
-    <div style={styles.content}>
-      <h2 style={styles.title}>Settings</h2>
-      
-      <div style={{ marginTop: '20px', maxWidth: '400px' }}>
-        <h3 style={{ marginBottom: '15px' }}>Change Password</h3>
-        
-        {passwordChangeMessage && (
-          <div style={{
-            padding: '10px',
-            marginBottom: '15px',
-            borderRadius: '4px',
-            backgroundColor: passwordChangeMessage.includes('successfully') ? '#d4edda' : '#f8d7da',
-            color: passwordChangeMessage.includes('successfully') ? '#155724' : '#721c24',
-            border: `1px solid ${passwordChangeMessage.includes('successfully') ? '#c3e6cb' : '#f5c6cb'}`
-          }}>
-            {passwordChangeMessage}
+        return (
+          <div style={styles.content}>
+            <h2 style={styles.title}>Settings</h2>
+
+            <div style={{ marginTop: '20px', maxWidth: '400px' }}>
+              <h3 style={{ marginBottom: '15px' }}>Change Password</h3>
+
+              {passwordChangeMessage && (
+                <div style={{
+                  padding: '10px',
+                  marginBottom: '15px',
+                  borderRadius: '4px',
+                  backgroundColor: passwordChangeMessage.includes('successfully') ? '#d4edda' : '#f8d7da',
+                  color: passwordChangeMessage.includes('successfully') ? '#155724' : '#721c24',
+                  border: `1px solid ${passwordChangeMessage.includes('successfully') ? '#c3e6cb' : '#f5c6cb'}`
+                }}>
+                  {passwordChangeMessage}
+                </div>
+              )}
+
+              <form
+                data-password-form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target as HTMLFormElement);
+                  const currentPassword = formData.get('currentPassword') as string;
+                  const newPassword = formData.get('newPassword') as string;
+                  const confirmPassword = formData.get('confirmPassword') as string;
+
+                  handlePasswordChange(currentPassword, newPassword, confirmPassword);
+                }}
+              >
+                <div style={{ marginBottom: '10px' }}>
+                  <label htmlFor="currentPassword" style={{ display: 'block', marginBottom: '5px' }}>
+                    Current Password:
+                  </label>
+                  <input
+                    type="password"
+                    id="currentPassword"
+                    name="currentPassword"
+                    required
+                    disabled={isChangingPassword}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      opacity: isChangingPassword ? 0.6 : 1
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label htmlFor="newPassword" style={{ display: 'block', marginBottom: '5px' }}>
+                    New Password:
+                  </label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    name="newPassword"
+                    required
+                    minLength={6}
+                    disabled={isChangingPassword}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      opacity: isChangingPassword ? 0.6 : 1
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '5px' }}>
+                    Confirm New Password:
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    required
+                    minLength={6}
+                    disabled={isChangingPassword}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      opacity: isChangingPassword ? 0.6 : 1
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  style={{
+                    backgroundColor: isChangingPassword ? '#6c757d' : '#007bff',
+                    color: 'white',
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isChangingPassword ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isChangingPassword ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
           </div>
-        )}
-        
-        <form 
-          data-password-form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target as HTMLFormElement);
-            const currentPassword = formData.get('currentPassword') as string;
-            const newPassword = formData.get('newPassword') as string;
-            const confirmPassword = formData.get('confirmPassword') as string;
-            
-            handlePasswordChange(currentPassword, newPassword, confirmPassword);
-          }}
-        >
-          <div style={{ marginBottom: '10px' }}>
-            <label htmlFor="currentPassword" style={{ display: 'block', marginBottom: '5px' }}>
-              Current Password:
-            </label>
-            <input
-              type="password"
-              id="currentPassword"
-              name="currentPassword"
-              required
-              disabled={isChangingPassword}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                opacity: isChangingPassword ? 0.6 : 1
-              }}
-            />
-          </div>
-          
-          <div style={{ marginBottom: '10px' }}>
-            <label htmlFor="newPassword" style={{ display: 'block', marginBottom: '5px' }}>
-              New Password:
-            </label>
-            <input
-              type="password"
-              id="newPassword"
-              name="newPassword"
-              required
-              minLength={6}
-              disabled={isChangingPassword}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                opacity: isChangingPassword ? 0.6 : 1
-              }}
-            />
-          </div>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '5px' }}>
-              Confirm New Password:
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              required
-              minLength={6}
-              disabled={isChangingPassword}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                opacity: isChangingPassword ? 0.6 : 1
-              }}
-            />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={isChangingPassword}
-            style={{
-              backgroundColor: isChangingPassword ? '#6c757d' : '#007bff',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isChangingPassword ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {isChangingPassword ? 'Updating...' : 'Update Password'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+        );
 
       default: // "Library"
         return (
@@ -1102,8 +1102,26 @@ const handlePasswordChange = async (currentPassword, newPassword, confirmPasswor
                       }}
                       title="Mark as Read"
                     >
-                      ✅
+                      📖
                     </div>
+
+                    {/* Star icon at top-right */}
+                    <div
+                      onClick={() => setPopupVisibleFor(book.id)}
+                      style={{
+                        position: "absolute",
+                        top: "8px",
+                        right: "8px",
+                        cursor: "pointer",
+                        fontSize: "22px",
+                        color: book.starred ? "#ffc107" : "#ccc", // Gold if starred, grey if not
+                        zIndex: 10,
+                      }}
+                      title={book.starred ? "Unstar this book" : "Star this book"}
+                    >
+                      ★
+                    </div>
+
 
                     {/* Book Cover */}
                     <div style={styles.bookCover}>
@@ -1217,7 +1235,8 @@ const handlePasswordChange = async (currentPassword, newPassword, confirmPasswor
                           <button
                             onClick={async () => {
                               try {
-                                const res = await fetch("http://127.0.0.1:5000/api/star", {
+                                const username = localStorage.getItem('user_id');
+                                const res = await fetch(`http://127.0.0.1:5000/api/star?username=${username}`, {
                                   method: "POST",
                                   headers: {
                                     "Content-Type": "application/json",
@@ -1255,7 +1274,8 @@ const handlePasswordChange = async (currentPassword, newPassword, confirmPasswor
                           <button
                             onClick={async () => {
                               try {
-                                const res = await fetch("http://127.0.0.1:5000/api/unstar", {
+                                const username = localStorage.getItem('user_id');
+                                const res = await fetch(`http://127.0.0.1:5000/api/unstar?username=${username}`, {
                                   method: "DELETE",
                                   headers: {
                                     "Content-Type": "application/json",
