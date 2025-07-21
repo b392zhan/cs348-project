@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import HasReadPage from './HasReadPage';
 import ReadingStatsPage from './ReadingStatsPage';
 import AuthorStats from './authorStats';
+import GlobalRankings from './GlobalRankings';
 
 
 
@@ -50,7 +51,8 @@ export default function Home() {
     "Settings",
     "HasRead",
     "Reading Statistics",
-    "Author Stats"
+    "Author Stats",
+    "Global Rankings"
   ];
 
   const alphabetFilters = [
@@ -713,6 +715,9 @@ export default function Home() {
 
       case "Author Stats":
         return <AuthorStats />;
+
+      case "Global Rankings":
+        return <GlobalRankings />;
 
       case "My Collection":
         return (
