@@ -1046,182 +1046,132 @@ def update_review_by_id(hasread_id):
     except Exception as e:
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-@app.route('/api/global-rankings')
-def get_global_rankings():
+
+
+
+@app.route("/api/most-read-book")
+def most_read_book():
     year = request.args.get("year")
-    
     if not year:
-        return jsonify({'error': 'Year parameter required'}), 400
-    
+        return jsonify({"error": "Missing year parameter"}), 400
+
     try:
         year = int(year)
     except ValueError:
-        return jsonify({'error': 'Invalid year format'}), 400
+        return jsonify({"error": "Invalid year format"}), 400
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    try:
-        # Get books ranked by how many times each book_id appears in HasRead for the specified year
-        cursor.execute("""
+    print(f"Finding most read book for year {year}")
+
+    # Updated to use HasRead table instead of ReadBooks
+    cursor.execute("""
+        SELECT 
+            b.book_id,
+            b.title,
+            b.issue,
+            b.page_length,
+            b.cover_url,
+            counts.read_count,
+            GROUP_CONCAT(DISTINCT a.name ORDER BY a.name ASC SEPARATOR ', ') AS authors,
+            GROUP_CONCAT(DISTINCT p.name ORDER BY p.name ASC SEPARATOR ', ') AS publishers
+        FROM (
             SELECT 
-                b.book_id,
-                b.title,
-                b.issue,
-                b.page_length,
-                b.cover_url,
-                COUNT(h.book_id) as read_count,
-                ROW_NUMBER() OVER (ORDER BY COUNT(h.book_id) DESC, b.title ASC) as rank,
-                GROUP_CONCAT(DISTINCT a.name ORDER BY a.name SEPARATOR ', ') as authors,
-                GROUP_CONCAT(DISTINCT p.name ORDER BY p.name SEPARATOR ', ') as publishers
-            FROM HasRead h
-            JOIN Book b ON h.book_id = b.book_id
-            LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
-            LEFT JOIN Author a ON wb.author_id = a.author_id
-            LEFT JOIN PublishedBy pb ON b.book_id = pb.book_id
-            LEFT JOIN Publisher p ON pb.publisher_id = p.publisher_id
-            WHERE YEAR(h.date) = %s
-            GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url
-            HAVING read_count > 0
-            ORDER BY read_count DESC, b.title ASC
-        """, (year,))
+                book_id,
+                COUNT(*) AS read_count
+            FROM HasRead
+            WHERE YEAR(date) = %s
+            GROUP BY book_id
+            ORDER BY read_count DESC
+            LIMIT 1
+        ) counts
+        JOIN Book b ON b.book_id = counts.book_id
+        LEFT JOIN WrittenBy wb ON b.book_id = wb.book_id
+        LEFT JOIN Author a ON wb.author_id = a.author_id
+        LEFT JOIN PublishedBy pb ON b.book_id = pb.book_id
+        LEFT JOIN Publisher p ON pb.publisher_id = p.publisher_id
+        GROUP BY b.book_id, b.title, b.issue, b.page_length, b.cover_url, counts.read_count
+    """, (year,))
+    
+    most_read = cursor.fetchone()
 
-        books = cursor.fetchall()
-        
-        # Convert comma-separated strings to arrays for authors and publishers
-        for book in books:
-            book['authors'] = book['authors'].split(', ') if book['authors'] else []
-            book['publishers'] = book['publishers'].split(', ') if book['publishers'] else []
-        
-        # Also get available years for the frontend
-        cursor.execute("""
-            SELECT DISTINCT YEAR(date) as year 
-            FROM HasRead 
-            WHERE date IS NOT NULL 
-            ORDER BY year DESC
-        """)
-        
-        available_years = [row['year'] for row in cursor.fetchall()]
-        
+    if not most_read:
+        print(f"No books found for year {year}")
         return jsonify({
-            'books': books,
-            'available_years': available_years,
-            'year': year,
-            'total_books': len(books),
-            'total_reads': sum(book['read_count'] for book in books)
+            "book": None,
+            "year": year,
+            "message": f"No books were read in {year}"
         })
-        
-    except mysql.connector.Error as db_error:
-        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-    finally:
-        cursor.close()
 
+    # Process the result
+    book_data = {
+        "book_id": most_read["book_id"],
+        "title": most_read["title"],
+        "issue": most_read["issue"],
+        "page_length": most_read["page_length"],
+        "cover_url": most_read["cover_url"],
+        "read_count": most_read["read_count"],
+        "authors": most_read["authors"].split(', ') if most_read["authors"] else [],
+        "publishers": most_read["publishers"].split(', ') if most_read["publishers"] else []
+    }
 
-@app.route('/api/global-rankings/years')
-def get_available_years():
-    """Get all years that have reading data"""
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+    # Updated to use HasRead table
+    cursor.execute("""
+        SELECT 
+            COUNT(DISTINCT b.book_id) as unique_books_read,
+            COUNT(r.hasread_id) as total_reads,
+            ROUND(AVG(b.page_length), 0) as avg_pages
+        FROM HasRead r
+        JOIN Book b ON r.book_id = b.book_id
+        WHERE YEAR(r.date) = %s AND b.page_length IS NOT NULL
+    """, (year,))
     
-    try:
-        cursor.execute("""
-            SELECT DISTINCT YEAR(date) as year 
-            FROM HasRead 
-            WHERE date IS NOT NULL 
-            ORDER BY year DESC
-        """)
-        
-        years = [row['year'] for row in cursor.fetchall()]
-        
-        # If no years found, provide current and recent years as fallback
-        if not years:
-            current_year = datetime.now().year
-            years = [current_year, current_year - 1, current_year - 2]
-        
-        return jsonify({
-            'years': years
-        })
-        
-    except mysql.connector.Error as db_error:
-        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-    finally:
-        cursor.close()
+    year_stats = cursor.fetchone()
 
-
-# Optional: Endpoint to get detailed statistics for a specific year
-@app.route('/api/global-rankings/stats')
-def get_global_rankings_stats():
-    """Get detailed statistics for a specific year"""
-    year = request.args.get("year")
+    print(f"Most read book: {most_read['title']} with {most_read['read_count']} reads")
     
-    if not year:
-        return jsonify({'error': 'Year parameter required'}), 400
-    
-    try:
-        year = int(year)
-    except ValueError:
-        return jsonify({'error': 'Invalid year format'}), 400
+    return jsonify({
+        "book": book_data,
+        "year": year,
+        "year_stats": {
+            "unique_books_read": year_stats["unique_books_read"] if year_stats else 0,
+            "total_reads": year_stats["total_reads"] if year_stats else 0,
+            "avg_pages": int(year_stats["avg_pages"]) if year_stats and year_stats["avg_pages"] is not None else 0
+        }
+    })
 
+
+@app.route("/api/most-read-book/available-years")
+def available_years_for_most_read():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    try:
-        # Get comprehensive stats for the year
-        cursor.execute("""
-            SELECT 
-                COUNT(DISTINCT b.book_id) as unique_books,
-                COUNT(h.hasread_id) as total_reads,
-                COUNT(DISTINCT h.user_id) as active_readers,
-                AVG(b.page_length) as avg_pages,
-                MAX(book_read_counts.read_count) as max_reads_per_book,
-                MIN(book_read_counts.read_count) as min_reads_per_book
-            FROM HasRead h
-            JOIN Book b ON h.book_id = b.book_id
-            JOIN (
-                SELECT book_id, COUNT(*) as read_count
-                FROM HasRead
-                WHERE YEAR(date) = %s
-                GROUP BY book_id
-            ) book_read_counts ON h.book_id = book_read_counts.book_id
-            WHERE YEAR(h.date) = %s
-        """, (year, year))
+    # Updated to use HasRead table
+    cursor.execute("""
+        SELECT DISTINCT YEAR(date) as year
+        FROM HasRead
+        WHERE date IS NOT NULL
+        ORDER BY year DESC
+    """)
+    
+    years = cursor.fetchall()
+    year_list = [row['year'] for row in years] if years else []
+    
+    # If no years found, provide some default recent years
+    if not year_list:
+        current_year = datetime.now().year
+        year_list = [current_year, current_year - 1, current_year - 2]
+    
+    print(f"Available years for most read books: {year_list}")
+    
+    return jsonify({
+        "years": year_list
+    })
 
-        stats = cursor.fetchone()
-        
-        # Get top genres if you have a genres table (optional)
-        # This would require adding a genres table to your schema
-        
-        # Get most active readers for the year
-        cursor.execute("""
-            SELECT 
-                u.name as reader_name,
-                COUNT(h.book_id) as books_read
-            FROM HasRead h
-            JOIN User u ON h.user_id = u.user_id
-            WHERE YEAR(h.date) = %s
-            GROUP BY h.user_id, u.name
-            ORDER BY books_read DESC
-            LIMIT 5
-        """, (year,))
-        
-        top_readers = cursor.fetchall()
-        
-        return jsonify({
-            'year': year,
-            'statistics': stats,
-            'top_readers': top_readers
-        })
-        
-    except mysql.connector.Error as db_error:
-        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-    finally:
-        cursor.close()
+
+
+
 
 if __name__ == "__main__":
     print("Starting Flask server...")
