@@ -4,6 +4,7 @@ import HasReadPage from './HasReadPage';
 import ReadingStatsPage from './ReadingStatsPage';
 import AuthorStats from './authorStats';
 import GlobalRankings from './GlobalRankings';
+import ReadingChallengesPage from "./ReadingChallengesPage";
 
 
 
@@ -52,7 +53,8 @@ export default function Home() {
     "HasRead",
     "Reading Statistics",
     "Author Stats",
-    "Global Rankings"
+    "Global Rankings",
+    "Reading Challenges"
   ];
 
   const alphabetFilters = [
@@ -718,6 +720,9 @@ export default function Home() {
 
       case "Global Rankings":
         return <GlobalRankings />;
+      
+      case "Reading Challenges":
+        return <ReadingChallengesPage />
 
       case "My Collection":
         return (

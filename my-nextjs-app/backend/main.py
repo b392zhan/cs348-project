@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 import click
 import random
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -1008,45 +1009,6 @@ def update_review():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
-# Alternative version if you want to use the hasread_id instead of user_id + book_id
-@app.route('/api/hasread/review/<int:hasread_id>', methods=['PUT'])
-def update_review_by_id(hasread_id):
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        review = data.get('review', '')
-        
-        # Connect to database
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        
-        # Update the review in the hasRead table
-        update_query = "UPDATE hasRead SET review = %s WHERE hasread_id = %s"
-        
-        cursor.execute(update_query, (review, hasread_id))
-        connection.commit()
-        
-        if cursor.rowcount == 0:
-            return jsonify({'error': 'No matching record found'}), 404
-        
-        cursor.close()
-        connection.close()
-        
-        return jsonify({
-            'message': 'Review updated successfully',
-            'hasread_id': hasread_id,
-            'review': review
-        }), 200
-        
-    except mysql.connector.Error as db_error:
-        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-
-
 
 
 @app.route("/api/most-read-book")
@@ -1141,8 +1103,88 @@ def available_years_for_most_read():
     })
 
 
+@app.route("/api/reading_challenges")
+def get_reading_challenges():
+    
+
+    
+    user_id = request.args.get("user_id")
+    
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
 
 
+    # Challenge 1: Read 12 books this year
+    current_year = datetime.now().year
+    
+    
+    
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM HasRead 
+        WHERE user_id = %s AND YEAR(date) = %s
+    """, (user_id, current_year))
+    
+    print("Executing:", user_id, current_year)
+
+    result = cursor.fetchone()
+    print("Raw fetchone() result (books read):", result)
+    
+    books_read_this_year = result['COUNT(*)']
+
+    # Challenge 2: Read 3 books by the same author
+    cursor.execute("""
+        SELECT MAX(author_count) FROM (
+            SELECT COUNT(*) AS author_count
+            FROM HasRead
+            JOIN WrittenBy ON HasRead.book_id = WrittenBy.book_id
+            WHERE HasRead.user_id = %s
+            GROUP BY WrittenBy.author_id
+        ) AS counts;
+    """, (user_id,))
+    result = cursor.fetchone()
+    
+    max_books_by_single_author = (result and result['MAX(author_count)']) or 0
+
+    # Challenge 3: Read 5000+ pages
+    cursor.execute("""
+        SELECT SUM(Book.page_length)
+        FROM HasRead
+        JOIN Book ON HasRead.book_id = Book.book_id
+        WHERE HasRead.user_id = %s
+    """, (user_id,))
+    result = cursor.fetchone()
+    
+    total_pages_read = (result and result['SUM(Book.page_length)']) or 0
+
+    print(books_read_this_year)
+    print(max_books_by_single_author)
+    print(total_pages_read)
+    cursor.close()
+
+    # Return boolean completion status + progress values (optional)
+    return jsonify({
+        "status": "success",
+        "challenges": {
+            "read_12_books_this_year": {
+                "completed": books_read_this_year >= 12,
+                "progress": books_read_this_year
+            },
+            "read_3_books_by_same_author": {
+                "completed": max_books_by_single_author >= 3,
+                "progress": max_books_by_single_author
+            },
+            "read_5000_pages": {
+                "completed": total_pages_read >= 5000,
+                "progress": total_pages_read
+            }
+        }
+    })
 
 if __name__ == "__main__":
     print("Starting Flask server...")
