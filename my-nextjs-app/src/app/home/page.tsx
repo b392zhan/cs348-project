@@ -5,6 +5,8 @@ import ReadingStatsPage from './ReadingStatsPage';
 import AuthorStats from './authorStats';
 import GlobalRankings from './GlobalRankings';
 import ReadingChallengesPage from "./ReadingChallengesPage";
+import Follow from "./Follow";
+import Feed from "./Feed";
 
 
 
@@ -45,16 +47,14 @@ export default function Home() {
 
   const navItems = [
     "Library",
-    "My Collection",
-    "Wish List",
-    "Configurations",
-    "Support",
-    "Settings",
     "HasRead",
     "Reading Statistics",
     "Author Stats",
     "Global Rankings",
-    "Reading Challenges"
+    "Reading Challenges",
+    "Follow",
+    "Feed",
+    "Settings"
   ];
 
   const alphabetFilters = [
@@ -724,6 +724,13 @@ export default function Home() {
       case "Reading Challenges":
         return <ReadingChallengesPage />
 
+      case "Follow":
+        return <Follow />
+
+      case "Feed":
+        return <Feed />
+      
+
       case "My Collection":
         return (
           <div style={styles.content}>
@@ -757,119 +764,260 @@ export default function Home() {
         );
 
       case "Settings":
-        return (
-          <div style={styles.content}>
-            <h2 style={styles.title}>Settings</h2>
-
-            <div style={{ marginTop: '20px', maxWidth: '400px' }}>
-              <h3 style={{ marginBottom: '15px' }}>Change Password</h3>
-
-              {passwordChangeMessage && (
-                <div style={{
-                  padding: '10px',
-                  marginBottom: '15px',
-                  borderRadius: '4px',
-                  backgroundColor: passwordChangeMessage.includes('successfully') ? '#d4edda' : '#f8d7da',
-                  color: passwordChangeMessage.includes('successfully') ? '#155724' : '#721c24',
-                  border: `1px solid ${passwordChangeMessage.includes('successfully') ? '#c3e6cb' : '#f5c6cb'}`
-                }}>
-                  {passwordChangeMessage}
-                </div>
-              )}
-
-              <form
-                data-password-form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  const currentPassword = formData.get('currentPassword') as string;
-                  const newPassword = formData.get('newPassword') as string;
-                  const confirmPassword = formData.get('confirmPassword') as string;
-
-                  handlePasswordChange(currentPassword, newPassword, confirmPassword);
-                }}
-              >
-                <div style={{ marginBottom: '10px' }}>
-                  <label htmlFor="currentPassword" style={{ display: 'block', marginBottom: '5px' }}>
-                    Current Password:
-                  </label>
-                  <input
-                    type="password"
-                    id="currentPassword"
-                    name="currentPassword"
-                    required
-                    disabled={isChangingPassword}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      opacity: isChangingPassword ? 0.6 : 1
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '10px' }}>
-                  <label htmlFor="newPassword" style={{ display: 'block', marginBottom: '5px' }}>
-                    New Password:
-                  </label>
-                  <input
-                    type="password"
-                    id="newPassword"
-                    name="newPassword"
-                    required
-                    minLength={6}
-                    disabled={isChangingPassword}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      opacity: isChangingPassword ? 0.6 : 1
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '15px' }}>
-                  <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '5px' }}>
-                    Confirm New Password:
-                  </label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    required
-                    minLength={6}
-                    disabled={isChangingPassword}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      opacity: isChangingPassword ? 0.6 : 1
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isChangingPassword}
-                  style={{
-                    backgroundColor: isChangingPassword ? '#6c757d' : '#007bff',
-                    color: 'white',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isChangingPassword ? 'not-allowed' : 'pointer'
-                  }}
+          const containerStyle = {
+            padding: '24px',
+            backgroundColor: '#ffffff',
+            minHeight: '100vh',
+            color: '#333333',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          };
+        
+          const titleStyle = {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#1f2937',
+            marginBottom: '24px',
+            margin: '0 0 24px 0'
+          };
+        
+          const formContainerStyle = {
+            marginTop: '20px',
+            maxWidth: '400px'
+          };
+        
+          const formTitleStyle = {
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '16px',
+            margin: '0 0 16px 0'
+          };
+        
+          const messageStyle = {
+            padding: '12px',
+            marginBottom: '16px',
+            borderRadius: '6px',
+            fontSize: '14px'
+          };
+        
+          const successMessageStyle = {
+            ...messageStyle,
+            backgroundColor: '#d1fae5',
+            color: '#065f46',
+            border: '1px solid #a7f3d0'
+          };
+        
+          const errorMessageStyle = {
+            ...messageStyle,
+            backgroundColor: '#fee2e2',
+            color: '#991b1b',
+            border: '1px solid #f87171'
+          };
+        
+          const formStyle = {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          };
+        
+          const inputGroupStyle = {
+            display: 'flex',
+            flexDirection: 'column'
+          };
+        
+          const labelStyle = {
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151',
+            marginBottom: '8px'
+          };
+        
+          const inputStyle = {
+            width: '100%',
+            padding: '10px 12px',
+            border: '2px solid #d1d5db',
+            borderRadius: '6px',
+            fontSize: '14px',
+            backgroundColor: '#ffffff',
+            color: '#111827',
+            boxSizing: 'border-box',
+            outline: 'none'
+          };
+        
+          const inputDisabledStyle = {
+            ...inputStyle,
+            opacity: '0.6',
+            cursor: 'not-allowed',
+            backgroundColor: '#f9fafb'
+          };
+        
+          const buttonStyle = {
+            width: '100%',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            backgroundColor: '#3b82f6',
+            color: '#ffffff',
+            boxSizing: 'border-box'
+          };
+        
+          const buttonDisabledStyle = {
+            ...buttonStyle,
+            backgroundColor: '#9ca3af',
+            cursor: 'not-allowed'
+          };
+        
+          const logoutButtonStyle = {
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
+            marginTop: '24px',
+            transition: 'background-color 0.2s ease'
+          };
+        
+          const handleLogout = () => {
+            // Clear any stored authentication data
+            localStorage.removeItem('authToken'); // Adjust based on your auth storage
+            sessionStorage.removeItem('authToken'); // Adjust based on your auth storage
+            
+            // Redirect to login page
+            window.location.href = 'http://localhost:3000';
+          };
+        
+          return (
+            <div style={containerStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={titleStyle}>Settings</h2>
+                <button 
+                  onClick={handleLogout}
+                  style={logoutButtonStyle}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#b91c1c'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#dc2626'}
                 >
-                  {isChangingPassword ? 'Updating...' : 'Update Password'}
+                  Log Out
                 </button>
-              </form>
+              </div>
+        
+              <div style={formContainerStyle}>
+                <h3 style={formTitleStyle}>Change Password</h3>
+        
+                {passwordChangeMessage && (
+                  <div style={
+                    passwordChangeMessage.includes('successfully') 
+                      ? successMessageStyle 
+                      : errorMessageStyle
+                  }>
+                    {passwordChangeMessage}
+                  </div>
+                )}
+        
+                <form
+                  data-password-form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target as HTMLFormElement);
+                    const currentPassword = formData.get('currentPassword') as string;
+                    const newPassword = formData.get('newPassword') as string;
+                    const confirmPassword = formData.get('confirmPassword') as string;
+        
+                    handlePasswordChange(currentPassword, newPassword, confirmPassword);
+                  }}
+                  style={formStyle}
+                >
+                  <div style={inputGroupStyle}>
+                    <label htmlFor="currentPassword" style={labelStyle}>
+                      Current Password:
+                    </label>
+                    <input
+                      type="password"
+                      id="currentPassword"
+                      name="currentPassword"
+                      required
+                      disabled={isChangingPassword}
+                      style={isChangingPassword ? inputDisabledStyle : inputStyle}
+                    />
+                  </div>
+        
+                  <div style={inputGroupStyle}>
+                    <label htmlFor="newPassword" style={labelStyle}>
+                      New Password:
+                    </label>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      name="newPassword"
+                      required
+                      minLength={6}
+                      disabled={isChangingPassword}
+                      style={isChangingPassword ? inputDisabledStyle : inputStyle}
+                    />
+                  </div>
+        
+                  <div style={inputGroupStyle}>
+                    <label htmlFor="confirmPassword" style={labelStyle}>
+                      Confirm New Password:
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      required
+                      minLength={6}
+                      disabled={isChangingPassword}
+                      style={isChangingPassword ? inputDisabledStyle : inputStyle}
+                    />
+                  </div>
+        
+                  <button
+                    type="submit"
+                    disabled={isChangingPassword}
+                    style={isChangingPassword ? buttonDisabledStyle : buttonStyle}
+                  >
+                    {isChangingPassword ? 'Updating...' : 'Update Password'}
+                  </button>
+                </form>
+        
+                {/* Additional logout option at the bottom */}
+                <div style={{ 
+                  marginTop: '40px', 
+                  paddingTop: '20px', 
+                  borderTop: '1px solid #e5e7eb' 
+                }}>
+                  <h3 style={formTitleStyle}>Account Actions</h3>
+                  <p style={{ 
+                    fontSize: '14px', 
+                    color: '#6b7280', 
+                    marginBottom: '12px',
+                    margin: '0 0 12px 0'
+                  }}>
+                    Need to switch accounts or sign out completely?
+                  </p>
+                  <button 
+                    onClick={handleLogout}
+                    style={{
+                      ...logoutButtonStyle,
+                      width: 'auto',
+                      marginTop: '0'
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#b91c1c'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#dc2626'}
+                  >
+                    Log Out of Account
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        );
-
+          );
+      
       default: // "Library"
         return (
           <div style={styles.content}>

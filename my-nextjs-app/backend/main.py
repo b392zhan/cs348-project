@@ -1186,6 +1186,361 @@ def get_reading_challenges():
         }
     })
 
+
+# Fixed and improved backend endpoints
+
+@app.route("/api/follow", methods=["POST"])
+def follow_user():
+    data = request.get_json()
+    follower_id = data.get("follower_id")
+    followee_id = data.get("followee_id")
+
+    if not follower_id or not followee_id:
+        return jsonify({"status": "error", "message": "Missing user IDs"}), 400
+    if follower_id == followee_id:
+        return jsonify({"status": "error", "message": "Cannot follow yourself"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check if already following
+        cursor.execute("""
+            SELECT * FROM Follows WHERE follower_id = %s AND followee_id = %s
+        """, (follower_id, followee_id))
+        if cursor.fetchone():
+            cursor.close()
+            return jsonify({"status": "error", "message": "Already following this user"}), 409
+
+        # Insert follow record
+        cursor.execute("""
+            INSERT INTO Follows (follower_id, followee_id)
+            VALUES (%s, %s)
+        """, (follower_id, followee_id))
+        db.commit()
+        cursor.close()
+
+        return jsonify({"status": "success", "message": "Followed successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/unfollow", methods=["POST"])
+def unfollow_user():
+    data = request.get_json()
+    follower_id = data.get("follower_id")
+    followee_id = data.get("followee_id")
+
+    if not follower_id or not followee_id:
+        return jsonify({"status": "error", "message": "Missing user IDs"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        cursor.execute("""
+            DELETE FROM Follows WHERE follower_id = %s AND followee_id = %s
+        """, (follower_id, followee_id))
+        
+        if cursor.rowcount == 0:
+            cursor.close()
+            return jsonify({"status": "error", "message": "You are not following this user"}), 404
+            
+        db.commit()
+        cursor.close()
+
+        return jsonify({"status": "success", "message": "Unfollowed successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/following", methods=["GET"])
+def get_following():
+    """Get users that the current user is following"""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.name
+            FROM Follows f
+            JOIN User u ON f.followee_id = u.user_id
+            WHERE f.follower_id = %s
+        """, (user_id,))
+        following_users = cursor.fetchall()
+        cursor.close()
+
+        return jsonify({"status": "success", "following": following_users}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/users-to-follow", methods=["GET"])
+def get_users_to_follow():
+    """Get suggested users that the current user can follow"""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Get users that the current user is not following (excluding themselves)
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.name,
+                   CASE WHEN f.followee_id IS NOT NULL THEN TRUE ELSE FALSE END as isFollowing
+            FROM User u
+            LEFT JOIN Follows f ON u.user_id = f.followee_id AND f.follower_id = %s
+            WHERE u.user_id != %s
+            ORDER BY u.username
+            LIMIT 20
+        """, (user_id, user_id))
+        
+        users = cursor.fetchall()
+        cursor.close()
+        
+        # Convert boolean for JSON serialization
+        for user in users:
+            user['isFollowing'] = bool(user['isFollowing'])
+
+        return jsonify({"status": "success", "users": users}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/search-users", methods=["GET"])
+def search_users():
+    """Search for users by username or user ID"""
+    query = request.args.get("query")
+    current_user_id = request.args.get("current_user_id")
+    
+    if not query:
+        return jsonify({"status": "error", "message": "Missing search query"}), 400
+    if not current_user_id:
+        return jsonify({"status": "error", "message": "Missing current_user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Search by username or user_id, excluding current user
+        if query.isdigit():
+            # Search by user ID
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.name,
+                       CASE WHEN f.followee_id IS NOT NULL THEN TRUE ELSE FALSE END as isFollowing
+                FROM User u
+                LEFT JOIN Follows f ON u.user_id = f.followee_id AND f.follower_id = %s
+                WHERE u.user_id = %s AND u.user_id != %s
+            """, (current_user_id, query, current_user_id))
+        else:
+            # Search by username (partial match)
+            search_term = f"%{query}%"
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.name,
+                       CASE WHEN f.followee_id IS NOT NULL THEN TRUE ELSE FALSE END as isFollowing
+                FROM User u
+                LEFT JOIN Follows f ON u.user_id = f.followee_id AND f.follower_id = %s
+                WHERE (u.username LIKE %s OR u.name LIKE %s) AND u.user_id != %s
+                ORDER BY u.username
+                LIMIT 10
+            """, (current_user_id, search_term, search_term, current_user_id))
+        
+        users = cursor.fetchall()
+        cursor.close()
+        
+        # Convert boolean for JSON serialization
+        for user in users:
+            user['isFollowing'] = bool(user['isFollowing'])
+
+        return jsonify({"status": "success", "users": users}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/user", methods=["GET"])
+def get_user_by_id():
+    """Get user information by user ID"""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT user_id, name, username FROM User WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+
+        if not user:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+
+        return jsonify({"status": "success", "user": user})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+
+@app.route("/api/feed", methods=["GET"])
+def get_user_feed():
+    """Get the reading feed for a user - shows latest books read by people they follow"""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Get the latest book read by each user that the current user follows
+        # This query gets the most recent HasRead entry for each followed user
+        cursor.execute("""
+            SELECT 
+                hr.hasread_id,
+                hr.user_id,
+                u.username,
+                u.name,
+                hr.book_id,
+                b.title as book_title,
+                b.cover_url,
+                hr.date,
+                hr.review,
+                b.page_length
+            FROM HasRead hr
+            INNER JOIN (
+                -- Subquery to get the most recent hasread_id for each user that we follow
+                SELECT 
+                    hr2.user_id,
+                    MAX(hr2.hasread_id) as latest_hasread_id
+                FROM HasRead hr2
+                INNER JOIN Follows f ON hr2.user_id = f.followee_id
+                WHERE f.follower_id = %s
+                GROUP BY hr2.user_id
+            ) latest ON hr.hasread_id = latest.latest_hasread_id
+            INNER JOIN User u ON hr.user_id = u.user_id
+            INNER JOIN Book b ON hr.book_id = b.book_id
+            ORDER BY hr.date DESC, hr.hasread_id DESC
+            LIMIT 50
+        """, (user_id,))
+        
+        feed_items = cursor.fetchall()
+        cursor.close()
+
+        # Convert date objects to strings for JSON serialization
+        for item in feed_items:
+            if item['date']:
+                item['date'] = item['date'].strftime('%Y-%m-%d')
+
+        return jsonify({"status": "success", "feed": feed_items}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/feed/all", methods=["GET"])
+def get_all_reading_activity():
+    """Get all recent reading activity from people the user follows (not just latest per person)"""
+    user_id = request.args.get("user_id")
+    limit = request.args.get("limit", 30)  # Default to 30 items
+    
+    if not user_id:
+        return jsonify({"status": "error", "message": "Missing user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Get all recent reading activity from followed users
+        cursor.execute("""
+            SELECT 
+                hr.hasread_id,
+                hr.user_id,
+                u.username,
+                u.name,
+                hr.book_id,
+                b.title as book_title,
+                b.cover_url,
+                hr.date,
+                hr.review,
+                b.page_length
+            FROM HasRead hr
+            INNER JOIN Follows f ON hr.user_id = f.followee_id
+            INNER JOIN User u ON hr.user_id = u.user_id
+            INNER JOIN Book b ON hr.book_id = b.book_id
+            WHERE f.follower_id = %s
+            ORDER BY hr.date DESC, hr.hasread_id DESC
+            LIMIT %s
+        """, (user_id, limit))
+        
+        feed_items = cursor.fetchall()
+        cursor.close()
+
+        # Convert date objects to strings for JSON serialization
+        for item in feed_items:
+            if item['date']:
+                item['date'] = item['date'].strftime('%Y-%m-%d')
+
+        return jsonify({"status": "success", "feed": feed_items}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/feed/user/<int:target_user_id>", methods=["GET"])
+def get_user_reading_history(target_user_id):
+    """Get reading history for a specific user (useful for profile pages)"""
+    current_user_id = request.args.get("current_user_id")
+    limit = request.args.get("limit", 20)
+    
+    if not current_user_id:
+        return jsonify({"status": "error", "message": "Missing current_user_id"}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Check if current user follows target user or if it's their own profile
+        if str(current_user_id) != str(target_user_id):
+            cursor.execute("""
+                SELECT 1 FROM Follows 
+                WHERE follower_id = %s AND followee_id = %s
+            """, (current_user_id, target_user_id))
+            
+            if not cursor.fetchone():
+                cursor.close()
+                return jsonify({"status": "error", "message": "You can only view reading history of users you follow"}), 403
+
+        # Get reading history for the target user
+        cursor.execute("""
+            SELECT 
+                hr.hasread_id,
+                hr.user_id,
+                u.username,
+                u.name,
+                hr.book_id,
+                b.title as book_title,
+                b.cover_url,
+                hr.date,
+                hr.review,
+                b.page_length
+            FROM HasRead hr
+            INNER JOIN User u ON hr.user_id = u.user_id
+            INNER JOIN Book b ON hr.book_id = b.book_id
+            WHERE hr.user_id = %s
+            ORDER BY hr.date DESC, hr.hasread_id DESC
+            LIMIT %s
+        """, (target_user_id, limit))
+        
+        reading_history = cursor.fetchall()
+        cursor.close()
+
+        # Convert date objects to strings for JSON serialization
+        for item in reading_history:
+            if item['date']:
+                item['date'] = item['date'].strftime('%Y-%m-%d')
+
+        return jsonify({"status": "success", "reading_history": reading_history}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == "__main__":
     print("Starting Flask server...")
     print("Testing database connection...")
