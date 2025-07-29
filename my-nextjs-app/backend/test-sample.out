@@ -1,133 +1,250 @@
-//Output of the R6 feature - searching book by title - 
+//Output of Basic Query 1: User creation
 
-| book\_id | title         | issue   | page\_length | authors | cover\_url                                                                                                                   |
-| -------- | ------------- | ------- | ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 8        | My Book Cover | Toronto | 500          | Canva   | [https://edit.org/images/cat/book-covers%20big-2019101610.jpg](https://edit.org/images/cat/book-covers%20big-2019101610.jpg) |
+After INSERT INTO User (username, password, name, age) VALUES ('test123', 'mypassword', 'Tester', 22);
 
+User Table:
+| user_id | username | password   | name   | age |
+|---------|----------|------------|--------|-----|
+| 1       | test123  | mypassword | Tester | 22  |
 
--------------------------------------------------------------------------------------------------
+SELECT * FROM User WHERE username = 'test123' AND password = 'mypassword';
+| user_id | username | password   | name   | age |
+|---------|----------|------------|--------|-----|
+| 1       | test123  | mypassword | Tester | 22  |
 
+SELECT password FROM User WHERE user_id = 5;
+| password   |
+|------------|
+| mypassword |
 
-//Output of the R7 feature - sorting by ascending order- 
-
-| book_id | title | issue | page_length | authors | cover_url                              |
-| ------- | ----- | ----- | ----------- | ------- | -------------------------------------- |
-| 21      | ca    | ca    | 200         | 400     | /placeholder.svg?height=192\&width=128 |
-| 26      | ca    | ca    | 300         | ca      | /placeholder.svg?height=192\&width=128 |
-| 22      | cb    | cb    | 300         | cb      | /placeholder.svg?height=192\&width=128 |
-| 23      | cc    | cc    | 200         | cc      | /placeholder.svg?height=192\&width=128 |
-| 25      | cg    | cg    | 300         | cg      | /placeholder.svg?height=192\&width=128 |
-| 24      | cx    | cx    | 200         | cx      | /placeholder.svg?height=192\&width=128 |
-
-
-//Output of the R8 feature - sorting by descending order- 
-
-| book_id | title | issue | page\_length | authors | cover_url                              |
-| ------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
-| 24      | cx    | cx    | 200          | cx      | /placeholder.svg?height=192\&width=128 |
-| 25      | cg    | cg    | 300          | cg      | /placeholder.svg?height=192\&width=128 |
-| 23      | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
-| 22      | cb    | cb    | 300          | cb      | /placeholder.svg?height=192\&width=128 |
-| 21      | ca    | ca    | 200          | 400     | /placeholder.svg?height=192\&width=128 |
-| 26      | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
+After UPDATE User SET password = 'newsecurepassword' WHERE user_id = 5;
+User Table (user_id = 5):
+| user_id | username | password          | name   | age |
+|---------|----------|-------------------|--------|-----|
+| 5       | test123  | newsecurepassword | Tester | 22  |
 
 -------------------------------------------------------------------------------------------------
 
-//Output of the R8 feature - adding a new book
-//Note these are changes in the tables affected by the query, note initially the tables are assumed to me empty 
+//Output of Basic Query 2: Searching, Sorting, Filtering
 
-Author Table -
+Searching - Books with 'Harry' in title for user 'john_doe':
+| book_id | title                                    | issue       | page_length | authors      | cover_url                    |
+|---------|------------------------------------------|-------------|-------------|--------------|------------------------------|
+| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | J.K. Rowling | https://example.com/hp1.jpg |
+| 2       | Harry Potter and the Chamber of Secrets  | 1st Edition | 251         | J.K. Rowling | https://example.com/hp2.jpg |
 
-| author_id | name         | date\_of\_birth |
-| --------- | ------------ | --------------- |
-| 1         | J.K. Rowling | 1965-07-31      |
+Sorting - Books for user in ascending order by title:
+| book_id | title                                    | issue       | page_length | cover_url                    | authors      |
+|---------|------------------------------------------|-------------|-------------|------------------------------|--------------|
+| 2       | Harry Potter and the Chamber of Secrets  | 1st Edition | 251         | https://example.com/hp2.jpg | J.K. Rowling |
+| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | https://example.com/hp1.jpg | J.K. Rowling |
+| 3       | The Great Gatsby                         | 3rd Edition | 180         | https://example.com/tgg.jpg | F. Scott Fitzgerald |
 
+Filtering - Books with page length between 200 and 400 for user 'john_doe':
+| book_id | title                                    | issue       | page_length | cover_url                    | authors      |
+|---------|------------------------------------------|-------------|-------------|------------------------------|--------------|
+| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | https://example.com/hp1.jpg | J.K. Rowling |
+| 2       | Harry Potter and the Chamber of Secrets  | 1st Edition | 251         | https://example.com/hp2.jpg | J.K. Rowling |
 
-Publisher Table -
+-------------------------------------------------------------------------------------------------
 
-| publisher_id | name       |
-| ------------ | ---------- |
-| 1            | Bloomsbury |
+//Output of Basic Query 3: Add Books to library
 
+SELECT username FROM User WHERE user_id = 5;
+| username |
+|----------|
+| test123  |
 
-Book Table -
+After adding F. Scott Fitzgerald and The Great Gatsby:
 
-| book_id | title                                    | issue       | page_length | cover_url |
-| ------- | ---------------------------------------- | ----------- | ----------- | --------- |
-| 1       | Harry Potter and the Philosopher's Stone | 1st Edition | 223         | /hp1.jpg  |
+Author Table:
+| author_id | name                | date_of_birth |
+|-----------|---------------------|---------------|
+| 15        | F. Scott Fitzgerald | 1896-09-24    |
 
+SELECT author_id FROM Author WHERE name = "F. Scott Fitzgerald";
+| author_id |
+|-----------|
+| 15        |
 
-WrittenBy Table -
+Publisher Table:
+| publisher_id | name     |
+|--------------|----------|
+| 8            | Scribner |
 
+SELECT publisher_id FROM Publisher WHERE name = "Scribner";
+| publisher_id |
+|--------------|
+| 8            |
+
+Book Table (new entry):
+| book_id | title            | issue       | page_length | cover_url                                      | user_id |
+|---------|------------------|-------------|-------------|------------------------------------------------|---------|
+| 25      | The Great Gatsby | 3rd Edition | 180         | https://example.com/covers/great-gatsby.jpg    | 5       |
+
+WrittenBy Table (new entry):
 | book_id | author_id |
-| ------- | --------- |
-| 1       | 1         |
+|---------|-----------|
+| 25      | 15        |
 
-
-PublishedBy Table -
-
+PublishedBy Table (new entry):
 | book_id | publisher_id |
-| ------- | ------------ |
-| 1       | 1            |
+|---------|--------------|
+| 25      | 8            |
 
 -------------------------------------------------------------------------------------------------
 
-//Output of the R9 feature - 
+//Output of Basic Query 4: Star/Unstar
 
-Star a Book 
+Star a Book - Initial Starred table:
+| user_id | book_id | starred |
+|---------|---------|---------|
+| 999     | 123     | TRUE    |
+| 999     | 321     | TRUE    |
 
-Suppose the Starred table initially has two entries:
+After INSERT INTO Starred (user_id, book_id, starred) VALUES ('999', 456, TRUE):
+| user_id | book_id | starred |
+|---------|---------|---------|
+| 999     | 123     | TRUE    |
+| 999     | 321     | TRUE    |
+| 999     | 456     | TRUE    |
 
-+---------+----------+---------+
-| user_id | book_id  | starred |
-+---------+----------+---------+
-|   999   |   123    |  TRUE   |
-|   999   |   321    |  TRUE   |
-+---------+----------+---------+
-
-Now, the user stars book_id = 456. The table becomes:
-
-+---------+----------+---------+
-| user_id | book_id  | starred |
-+---------+----------+---------+
-|   999   |   123    |  TRUE   |
-|   999   |   321    |  TRUE   |
-|   999   |   456    |  TRUE   |
-+---------+----------+---------+
-
-
-UnStar a Book
-
-After Unstarring the Book (book_id = 321) in the above table
-
-+---------+----------+---------+
-| user_id | book_id  | starred |
-+---------+----------+---------+
-|   999   |   123    |  TRUE   |
-|   999   |   456    |  TRUE   |
-+---------+----------+---------+
-
-
+Unstar a Book - After DELETE FROM Starred WHERE user_id = '999' AND book_id = 456:
+| user_id | book_id | starred |
+|---------|---------|---------|
+| 999     | 123     | TRUE    |
+| 999     | 321     | TRUE    |
 
 -------------------------------------------------------------------------------------------------
 
-//Output of the R10 feature - 
+//Output of Basic Query 5: Top 10 authors
 
-Assume the Book table has the following data:
+Top 10 authors for user_id = 3:
+| author_id | author_name         | num_books |
+|-----------|---------------------|-----------|
+| 1         | J.K. Rowling        | 7         |
+| 2         | Stephen King        | 5         |
+| 3         | Agatha Christie     | 4         |
+| 4         | George R.R. Martin  | 3         |
+| 5         | Jane Austen         | 3         |
+| 6         | Mark Twain          | 2         |
+| 7         | Charles Dickens     | 2         |
+| 8         | Ernest Hemingway    | 2         |
+| 9         | F. Scott Fitzgerald | 1         |
+| 10        | Harper Lee          | 1         |
 
-| book_id | title | issue | page_length | authors | cover_url                              |
-| ------- | ----- | ----- | ----------- | ------- | -------------------------------------- |
-| 21      | ca    | ca    | 100         | 400     | /placeholder.svg?height=192\&width=128 |
-| 26      | ca    | ca    | 300         | ca      | /placeholder.svg?height=192\&width=128 |
-| 22      | cb    | cb    | 100         | cb      | /placeholder.svg?height=192\&width=128 |
-| 23      | cc    | cc    | 200         | cc      | /placeholder.svg?height=192\&width=128 |
-| 25      | cg    | cg    | 100         | cg      | /placeholder.svg?height=192\&width=128 |
+-------------------------------------------------------------------------------------------------
 
+//Output of Advanced Query 1: Mark as read
 
-And the user adds a filter of page length with minimum pages = 200 and maximum pages = 300
-Then the table will look like 
+After marking book as read with CTE INSERT:
+HasRead Table (new entry):
+| user_id | book_id | date       | review        |
+|---------|---------|------------|---------------|
+| 101     | 501     | 2025-07-29 | Amazing book! |
 
-| book\_id | title | issue | page\_length | authors | cover\_url                             |
-| -------- | ----- | ----- | ------------ | ------- | -------------------------------------- |
-| 23       | cc    | cc    | 200          | cc      | /placeholder.svg?height=192\&width=128 |
-| 26       | ca    | ca    | 300          | ca      | /placeholder.svg?height=192\&width=128 |
+Reading history for user_id = 101:
+| book_id | title            | issue       | page_length | review        | date       |
+|---------|------------------|-------------|-------------|---------------|------------|
+| 501     | The Great Gatsby | 3rd Edition | 180         | Amazing book! | 2025-07-29 |
+| 502     | 1984             | 1st Edition | 328         | Thought-provoking | 2025-07-25 |
+
+After updating review:
+| book_id | title            | issue       | page_length | review                           | date       |
+|---------|------------------|-------------|-------------|----------------------------------|------------|
+| 501     | The Great Gatsby | 3rd Edition | 180         | Changed my mind, it was just okay. | 2025-07-29 |
+| 502     | 1984             | 1st Edition | 328         | Thought-provoking                | 2025-07-25 |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of Advanced Query 2: Statistics View
+
+Reading statistics for user_id = 1:
+| total_books | avg_pages | favorite_author | first_book       | latest_book      |
+|-------------|-----------|-----------------|------------------|------------------|
+| 12          | 267.5     | J.K. Rowling    | The Hobbit       | Dune             |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of Advanced Query 3: Reading Challenges
+
+Books read this year (2025) for user_id = 1:
+| total_books |
+|-------------|
+| 8           |
+
+Maximum books read by single author for user_id = 1:
+| max_books_by_author |
+|---------------------|
+| 4                   |
+
+Total pages read by user_id = 1:
+| total_pages_read |
+|------------------|
+| 3210             |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of Advanced Query 4: Most read book
+
+Most Read Book View created successfully.
+
+Most read book in 2025:
+| book_id | title                                    | read_count |
+|---------|------------------------------------------|------------|
+| 1       | Harry Potter and the Philosopher's Stone | 15         |
+
+-------------------------------------------------------------------------------------------------
+
+//Output of Advanced Query 5: Admin Panel
+
+All users with their book counts (excluding admin):
+| user_id | username    | name        | age | book_count |
+|---------|-------------|-------------|-----|------------|
+| 1       | john_doe    | John Doe    | 28  | 15         |
+| 2       | jane_smith  | Jane Smith  | 25  | 12         |
+| 3       | bob_wilson  | Bob Wilson  | 32  | 8          |
+| 4       | alice_brown | Alice Brown | 29  | 6          |
+| 5       | test123     | Tester      | 22  | 3          |
+
+After DELETE FROM User WHERE user_id = 3;
+(User bob_wilson removed from system)
+
+Total statistics:
+| total_users |
+|-------------|
+| 4           |
+
+| total_books |
+|-------------|
+| 89          |
+
+| total_reads |
+|-------------|
+| 156         |
+
+| unique_books_read |
+|-------------------|
+| 45                |
+
+Top 5 users by book count:
+| username    | name        | book_count |
+|-------------|-------------|------------|
+| john_doe    | John Doe    | 15         |
+| jane_smith  | Jane Smith  | 12         |
+| alice_brown | Alice Brown | 6          |
+| test123     | Tester      | 3          |
+
+Reading activity for past week (2025-07-23 to 2025-07-29):
+| read_date  | books_read |
+|------------|------------|
+| 2025-07-23 | 3          |
+| 2025-07-24 | 5          |
+| 2025-07-25 | 2          |
+| 2025-07-26 | 4          |
+| 2025-07-27 | 1          |
+| 2025-07-28 | 6          |
+| 2025-07-29 | 3          |
+
+After DELETE FROM Book WHERE book_id = 42 AND user_id = 3;
+(Book with book_id = 42 removed from user 3's library)
