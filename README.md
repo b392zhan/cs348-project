@@ -13,46 +13,46 @@ Then run the backend using python3 main.py under my-next-js-app/backend
 Go to localhost and you may now use the application.
 
 ## Basic Features
-📘 Create Book
+🔍 Book Search
 
-Users can add a new book to their personal library by providing important details such as title, author, genre, ISBN, and publisher. To ensure data consistency, if the specified author or publisher doesn't already exist in the database, they are automatically inserted (IF NOT EXISTS) before the book entry is created. The new book is then linked to the user's reading list via ToReadList or HasRead.
+Locate specific books in your collection with our powerful search functionality. The system supports partial matches and instant results, making it easy to find any book you've added. Search queries use efficient database indexing for fast performance.
 
-🔤 Sort Books Alphabetically
+🔑 Password
 
-From the Display menu in the UI, users can sort their entire book list in ascending alphabetical order based on the book title. This allows for easy browsing and a familiar bookshelf-like experience.
+Users can securely change their passwords at any time. The system requires verification of the current password before allowing changes, ensuring account security. All passwords are encrypted and never stored in plain text.
 
-🔍 Search for Books
+📖 Add Book
 
-A search bar at the top of the interface allows users to search for books by name using partial matches. The SQL query behind this feature uses the LIKE operator to support flexible keyword input (e.g., "%harry%" will match "Harry Potter and the Chamber of Secrets").
+Add new titles to your personal library with complete control over the information. The system automatically handles author and publisher references, creating new entries when necessary while preventing duplicates. All book metadata is stored for easy retrieval.
 
-⭐ Starred Books
+⭐ Star Book
 
-Every book entry includes a star icon in the UI to allow users to "favourite" or highlight books. Newly created books default to an unselected (unstarred) state. When a user clicks the star, it toggles the starred boolean column in the Book table (or a separate StarredBooks table if modeled that way). This helps users quickly identify their most treasured reads.
+Highlight your favorite books with the star feature. This creates a special collection of your most treasured reads that you can quickly access. The star status persists across all views and devices.
 
-📖 Book Length
+🏆 Top Authors
 
-Books in the library can be filtered by their page length. When a user uses this filter, they can quickly know how long it would take to read these books, as they now know the page length and can better estimate their reading time.
+Discover information about your most-read authors, including how many of their works you've completed. This feature analyzes your reading history to surface your personal literary preferences and trends.
 
 ## Advanced Features
-📊 Author Statistics
+🔄 Book Status Update
 
-View detailed statistics about your top authors including number of books read, average page length, and identify your shortest/longest reads from each author.
+This comprehensive feature applies all necessary table changes when updating a book's status. Whether marking a book as read, adding a review, or changing reading dates, the system maintains data integrity across all related tables through atomic transactions.
 
-📅 Reading History Timeline
+📈 Reading Stats View
 
-Track your reading journey with a chronological view of all books you've read, including dates and your personal reviews.
+Get a summarized view of your reading trends with beautiful visualizations. See your reading frequency, page counts over time, genre distributions, and other insightful metrics about your literary journey.
+
+👨💻 Admin Dashboard
+
+Administrators can access special tools and information through this dedicated interface. Monitor system health, view user statistics, manage content flags, and configure application settings from one centralized location.
 
 🎯 Reading Challenges
 
-Set and track personalized reading goals including annual targets, author-specific challenges, and page count milestones.
+Set and track personalized reading goals with our challenges system. Whether you want to read more books by diverse authors, hit a yearly target, or explore new genres, Shelfie helps you stay motivated and track your progress.
 
-🌍 Global Book Rankings
+📚 Top Book
 
-Discover which books are most popular among all Shelfie users, with filters by year and genre.
-
-🔐 Age-Based Access Control
-
-Customizable parental controls that restrict mature content based on user age, with admin override capabilities.
+Discover the most read book across the entire Shelfie community for any given year. This feature analyzes aggregated reading data to surface popular titles and literary trends among all users.
 
 ## How to Generate Production Data
 Book dataset is populated by a set found on Kaggle with real-world titles (see below). To both manage and utilize the data for our purposes, the dataset comprises 10,000 books and 5,000 authors. The data was further transformed using Python scripts to normalize fields like author and mapping to keys. After formatting the new CSV file, it was uploaded to MySQL Workbench using Import Wizard. Throughout the process, linkages were established and verified to yield results.
