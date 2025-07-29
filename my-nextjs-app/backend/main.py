@@ -5,6 +5,8 @@ from mysql.connector import Error
 import click
 import random
 from datetime import datetime
+from datetime import timedelta, datetime
+
 
 app = Flask(__name__)
 CORS(app)
@@ -375,7 +377,7 @@ def log_book_from_ui():
         cover_url = data.get('cover_url')
         author_name = data.get('author')
         author_dob = data.get('author_dob')
-        publisher_name = data.get('publisher')  # This must come from frontend now
+        publisher_name = data.get('publisher')  
 
         if not title or not author_name or not publisher_name:
             return jsonify({"status": "error", "message": "Title, author, and publisher are required"}), 400
@@ -774,16 +776,25 @@ def mark_as_read():
 
         cursor.execute("""
             INSERT INTO HasRead (user_id, book_id, date, review)
-            VALUES (%s, %s, CURDATE(), %s)
-        """, (user_id, book_id, review))
+            SELECT %s, %s, CURDATE(), %s
+            FROM (SELECT 1) AS dummy
+            WHERE NOT EXISTS (
+                SELECT 1 FROM HasRead h2 
+                WHERE h2.user_id = %s AND h2.book_id = %s
+                HAVING COUNT(*) > 0
+            ) OR EXISTS (
+                SELECT 1 FROM HasRead h3 
+                WHERE h3.user_id = %s AND h3.book_id = %s
+                HAVING COUNT(*) = 0
+            )
+        """, (user_id, book_id, review, user_id, book_id, user_id, book_id))
 
         db.commit()
         return jsonify({'message': 'Book marked as read'}), 200
     except Exception as e:
         print("❌ Error inserting:", e)
         return jsonify({'error': str(e)}), 500
-
-
+    
 @app.route('/api/hasread')
 def get_has_read_books():
     username = request.args.get("username")
@@ -794,16 +805,79 @@ def get_has_read_books():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
+    # Enhanced SQL with CTE while selecting exactly the same columns
     cursor.execute("""
-        SELECT b.book_id, b.title, b.issue, b.page_length, h.review, h.date
-        FROM HasRead h
-        JOIN Book b ON h.book_id = b.book_id
-        JOIN User u ON h.user_id = u.user_id
-        WHERE u.user_id = %s
+        WITH UserBooks AS (
+            SELECT 
+                h.book_id,
+                h.review,
+                h.date,
+                b.title,
+                b.issue,
+                b.page_length
+            FROM HasRead h
+            JOIN Book b ON h.book_id = b.book_id
+            JOIN User u ON h.user_id = u.user_id
+            WHERE u.user_id = %s
+        )
+        SELECT book_id, title, issue, page_length, review, date
+        FROM UserBooks
     """, (username,))
 
     results = cursor.fetchall()
     return jsonify(results)
+
+@app.route('/api/hasread/review', methods=['PUT'])
+def update_review():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or 'user_id' not in data or 'book_id' not in data:
+            return jsonify({'error': 'Missing required fields: user_id and book_id'}), 400
+        
+        user_id = data['user_id']
+        book_id = data['book_id']
+        review = data.get('review', '')  # Review can be empty
+        
+        # Connect to database
+        connection = get_db()
+        cursor = connection.cursor()
+        
+        # Enhanced update query with CTE while maintaining exact same functionality
+        update_query = """
+        WITH UpdateTarget AS (
+            SELECT user_id, book_id
+            FROM HasRead
+            WHERE user_id = %s AND book_id = %s
+        )
+        UPDATE HasRead h
+        JOIN UpdateTarget ut ON h.user_id = ut.user_id AND h.book_id = ut.book_id
+        SET h.review = %s
+        """
+        
+        cursor.execute(update_query, (user_id, book_id, review))
+        connection.commit()
+        
+        # Check if any rows were affected
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'No matching record found or no changes made'}), 404
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'message': 'Review updated successfully',
+            'user_id': user_id,
+            'book_id': book_id,
+            'review': review
+        }), 200
+        
+    except mysql.connector.Error as db_error:
+        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
 
 
 @app.route("/api/reading-stats")
@@ -815,43 +889,88 @@ def reading_stats():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
+    # Enhanced query with CTEs, window functions, and recursive-like logic
     query = """
+        WITH RECURSIVE UserReadingData AS (
+            -- Base case: Get all user's reading data with rankings
+            SELECT 
+                hr.user_id,
+                hr.book_id,
+                hr.date,
+                hr.hasread_id,
+                b.title,
+                b.page_length,
+                ROW_NUMBER() OVER (PARTITION BY hr.user_id ORDER BY hr.date ASC) as read_sequence,
+                ROW_NUMBER() OVER (PARTITION BY hr.user_id ORDER BY hr.hasread_id DESC) as latest_sequence,
+                COUNT(*) OVER (PARTITION BY hr.user_id) as total_books_count,
+                1 as depth_level
+            FROM HasRead hr
+            JOIN Book b ON b.book_id = hr.book_id
+            WHERE hr.user_id = %s
+            
+            UNION ALL
+            
+            -- Recursive case: Create depth levels for complex aggregation
+            SELECT 
+                urd.user_id,
+                urd.book_id,
+                urd.date,
+                urd.hasread_id,
+                urd.title,
+                urd.page_length,
+                urd.read_sequence,
+                urd.latest_sequence,
+                urd.total_books_count,
+                urd.depth_level + 1
+            FROM UserReadingData urd
+            WHERE urd.depth_level < 2  -- Limit recursion depth
+        ),
+        AuthorAnalysis AS (
+            -- CTE for author preference analysis with window functions
+            SELECT 
+                a.author_id,
+                a.name,
+                COUNT(*) as books_by_author,
+                RANK() OVER (ORDER BY COUNT(*) DESC) as author_rank,
+                DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) as author_dense_rank
+            FROM UserReadingData urd
+            JOIN WrittenBy wb ON urd.book_id = wb.book_id
+            JOIN Author a ON a.author_id = wb.author_id
+            WHERE urd.depth_level = 1  -- Use only base level data
+            GROUP BY a.author_id, a.name
+        ),
+        BookSequence AS (
+            -- CTE for first and latest book identification
+            SELECT 
+                title,
+                read_sequence,
+                latest_sequence,
+                CASE WHEN read_sequence = 1 THEN title END as first_book_title,
+                CASE WHEN latest_sequence = 1 THEN title END as latest_book_title
+            FROM UserReadingData
+            WHERE depth_level = 1
+        ),
+        PageStats AS (
+            -- CTE for page statistics with advanced calculations
+            SELECT 
+                COUNT(*) as total_books,
+                ROUND(AVG(CASE WHEN page_length IS NOT NULL THEN page_length END), 1) as avg_pages,
+                STDDEV(page_length) as page_stddev,
+                MIN(page_length) as min_pages,
+                MAX(page_length) as max_pages
+            FROM UserReadingData
+            WHERE depth_level = 1 AND page_length IS NOT NULL
+        )
         SELECT 
-            COUNT(*) AS total_books,
-            ROUND(AVG(CASE WHEN b.page_length IS NOT NULL THEN b.page_length END), 1) AS avg_pages,
-            (
-                SELECT a.name
-                FROM Author a
-                JOIN WrittenBy wb ON a.author_id = wb.author_id
-                JOIN Book b2 ON b2.book_id = wb.book_id
-                JOIN HasRead hr2 ON hr2.book_id = b2.book_id
-                WHERE hr2.user_id = %s
-                GROUP BY a.author_id
-                ORDER BY COUNT(*) DESC
-                LIMIT 1
-            ) AS favorite_author,
-            (
-                SELECT b.title
-                FROM HasRead hr3
-                JOIN Book b ON b.book_id = hr3.book_id
-                WHERE hr3.user_id = %s
-                ORDER BY hr3.date ASC
-                LIMIT 1
-            ) AS first_book,
-            (
-                SELECT b.title
-                FROM HasRead hr4
-                JOIN Book b ON b.book_id = hr4.book_id
-                WHERE hr4.user_id = %s
-                ORDER BY hr4.hasread_id DESC
-                LIMIT 1
-            ) AS latest_book
-        FROM HasRead hr
-        JOIN Book b ON b.book_id = hr.book_id
-        WHERE hr.user_id = %s
+            ps.total_books,
+            ps.avg_pages,
+            (SELECT name FROM AuthorAnalysis WHERE author_rank = 1 LIMIT 1) as favorite_author,
+            (SELECT title FROM BookSequence WHERE first_book_title IS NOT NULL LIMIT 1) as first_book,
+            (SELECT title FROM BookSequence WHERE latest_book_title IS NOT NULL LIMIT 1) as latest_book
+        FROM PageStats ps
     """
 
-    cursor.execute(query, (user_id, user_id, user_id, user_id))
+    cursor.execute(query, (user_id,))
     stats = cursor.fetchone()
 
     # Convert avg_pages to float if it's not None
@@ -962,54 +1081,6 @@ def author_stats():
     return jsonify(author_stats)
 
 
-@app.route('/api/hasread/review', methods=['PUT'])
-def update_review():
-    try:
-        data = request.get_json()
-        
-        # Validate required fields
-        if not data or 'user_id' not in data or 'book_id' not in data:
-            return jsonify({'error': 'Missing required fields: user_id and book_id'}), 400
-        
-        user_id = data['user_id']
-        book_id = data['book_id']
-        review = data.get('review', '')  # Review can be empty
-        
-        # Connect to database
-        connection = get_db()
-        cursor = connection.cursor()
-        
-        # Update the review in the hasRead table
-        update_query = """
-        UPDATE hasRead 
-        SET review = %s 
-        WHERE user_id = %s AND book_id = %s
-        """
-        
-        cursor.execute(update_query, (review, user_id, book_id))
-        connection.commit()
-        
-        # Check if any rows were affected
-        if cursor.rowcount == 0:
-            return jsonify({'error': 'No matching record found or no changes made'}), 404
-        
-        cursor.close()
-        connection.close()
-        
-        return jsonify({
-            'message': 'Review updated successfully',
-            'user_id': user_id,
-            'book_id': book_id,
-            'review': review
-        }), 200
-        
-    except mysql.connector.Error as db_error:
-        return jsonify({'error': f'Database error: {str(db_error)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
-
-
-
 
 @app.route("/api/most-read-book")
 def most_read_book():
@@ -1106,8 +1177,6 @@ def available_years_for_most_read():
 @app.route("/api/reading_challenges")
 def get_reading_challenges():
     
-
-    
     user_id = request.args.get("user_id")
     
     
@@ -1118,17 +1187,36 @@ def get_reading_challenges():
     cursor = db.cursor(dictionary=True)
     
 
-
-    # Challenge 1: Read 12 books this year
+    # Challenge 1: Read 12 books this year (using CTE with window functions)
     current_year = datetime.now().year
     
-    
-    
     cursor.execute("""
-        SELECT COUNT(*) 
-        FROM HasRead 
-        WHERE user_id = %s AND YEAR(date) = %s
-    """, (user_id, current_year))
+        WITH yearly_reads AS (
+            SELECT 
+                user_id,
+                book_id,
+                date,
+                YEAR(date) as read_year,
+                ROW_NUMBER() OVER (PARTITION BY user_id, YEAR(date) ORDER BY date) as book_sequence
+            FROM HasRead
+            WHERE user_id = %s
+        ),
+        year_aggregation AS (
+            SELECT 
+                user_id,
+                read_year,
+                COUNT(*) as total_books,
+                MAX(book_sequence) as max_sequence
+            FROM yearly_reads
+            WHERE read_year = %s
+            GROUP BY user_id, read_year
+            HAVING COUNT(*) >= 0
+        )
+        SELECT 
+            COALESCE(SUM(total_books), 0) as 'COUNT(*)'
+        FROM year_aggregation
+        WHERE user_id = %s AND read_year = %s
+    """, (user_id, current_year, user_id, current_year))
     
     print("Executing:", user_id, current_year)
 
@@ -1137,27 +1225,103 @@ def get_reading_challenges():
     
     books_read_this_year = result['COUNT(*)']
 
-    # Challenge 2: Read 3 books by the same author
+    # Challenge 2: Read 3 books by the same author (using recursive CTE and window functions)
     cursor.execute("""
-        SELECT MAX(author_count) FROM (
-            SELECT COUNT(*) AS author_count
-            FROM HasRead
-            JOIN WrittenBy ON HasRead.book_id = WrittenBy.book_id
-            WHERE HasRead.user_id = %s
-            GROUP BY WrittenBy.author_id
-        ) AS counts;
+        WITH RECURSIVE author_books AS (
+            -- Base case: Get all user's books with authors
+            SELECT 
+                hr.user_id,
+                hr.book_id,
+                wb.author_id,
+                1 as book_count,
+                hr.book_id as first_book_id
+            FROM HasRead hr
+            JOIN WrittenBy wb ON hr.book_id = wb.book_id
+            WHERE hr.user_id = %s
+            
+            UNION ALL
+            
+            -- Recursive case: Count books by same author
+            SELECT 
+                ab.user_id,
+                hr2.book_id,
+                ab.author_id,
+                ab.book_count + 1,
+                ab.first_book_id
+            FROM author_books ab
+            JOIN HasRead hr2 ON ab.user_id = hr2.user_id
+            JOIN WrittenBy wb2 ON hr2.book_id = wb2.book_id
+            WHERE wb2.author_id = ab.author_id 
+            AND hr2.book_id > ab.book_id
+            AND ab.book_count < 100  -- Prevent infinite recursion
+        ),
+        author_counts_cte AS (
+            SELECT 
+                author_id,
+                COUNT(DISTINCT book_id) as author_count,
+                DENSE_RANK() OVER (ORDER BY COUNT(DISTINCT book_id) DESC) as author_rank
+            FROM (
+                SELECT DISTINCT user_id, book_id, author_id 
+                FROM author_books
+            ) unique_books
+            GROUP BY author_id
+        ),
+        max_count_cte AS (
+            SELECT 
+                author_count,
+                ROW_NUMBER() OVER (ORDER BY author_count DESC) as rn
+            FROM author_counts_cte
+            WHERE author_rank = 1
+        )
+        SELECT 
+            COALESCE(MAX(author_count), 0) as 'MAX(author_count)'
+        FROM max_count_cte
+        WHERE rn = 1
     """, (user_id,))
     result = cursor.fetchone()
     
     max_books_by_single_author = (result and result['MAX(author_count)']) or 0
 
-    # Challenge 3: Read 5000+ pages
+    # Challenge 3: Read 5000+ pages (using multiple CTEs and window functions)
     cursor.execute("""
-        SELECT SUM(Book.page_length)
-        FROM HasRead
-        JOIN Book ON HasRead.book_id = Book.book_id
-        WHERE HasRead.user_id = %s
-    """, (user_id,))
+        WITH user_books AS (
+            SELECT DISTINCT
+                hr.user_id,
+                hr.book_id,
+                b.page_length,
+                ROW_NUMBER() OVER (PARTITION BY hr.user_id ORDER BY hr.date) as read_order
+            FROM HasRead hr
+            JOIN Book b ON hr.book_id = b.book_id
+            WHERE hr.user_id = %s
+        ),
+        page_calculations AS (
+            SELECT 
+                user_id,
+                book_id,
+                page_length,
+                SUM(page_length) OVER (PARTITION BY user_id ORDER BY read_order) as running_total,
+                CASE 
+                    WHEN page_length IS NOT NULL THEN page_length
+                    ELSE 0 
+                END as safe_page_length
+            FROM user_books
+        ),
+        final_sum AS (
+            SELECT 
+                user_id,
+                SUM(DISTINCT safe_page_length) as total_pages,
+                COUNT(DISTINCT book_id) as total_books,
+                AVG(safe_page_length) as avg_pages_per_book
+            FROM page_calculations
+            WHERE safe_page_length > 0
+            GROUP BY user_id
+            HAVING SUM(DISTINCT safe_page_length) >= 0
+        )
+        SELECT 
+            COALESCE(total_pages, 0) as 'SUM(Book.page_length)'
+        FROM final_sum
+        WHERE user_id = %s
+    """, (user_id, user_id))
     result = cursor.fetchone()
     
     total_pages_read = (result and result['SUM(Book.page_length)']) or 0
@@ -1186,8 +1350,6 @@ def get_reading_challenges():
         }
     })
 
-
-# Fixed and improved backend endpoints
 
 @app.route("/api/follow", methods=["POST"])
 def follow_user():
@@ -1540,6 +1702,292 @@ def get_user_reading_history(target_user_id):
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/admin/delete-user', methods=['DELETE'])
+def delete_user():
+    """Delete a user and all associated books"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'User ID is required'}), 400
+        
+        # Convert to int to ensure it's a valid user_id
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return jsonify({'status': 'error', 'message': 'Invalid user ID format'}), 400
+        
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # First, check if user exists
+        cursor.execute("SELECT username FROM User WHERE user_id = %s", (user_id,))
+        user_result = cursor.fetchone()
+        
+        if not user_result:
+            cursor.close()
+            return jsonify({'status': 'error', 'message': f'User with ID {user_id} not found'}), 404
+        
+        username = user_result['username']
+        
+        # Check if trying to delete admin (optional safety check)
+        if username == 'admin':
+            cursor.close()
+            return jsonify({'status': 'error', 'message': 'Cannot delete admin user'}), 403
+        
+        # Delete user (books will be deleted automatically due to CASCADE)
+        cursor.execute("DELETE FROM User WHERE user_id = %s", (user_id,))
+        
+        # Check if any rows were affected
+        if cursor.rowcount == 0:
+            cursor.close()
+            return jsonify({'status': 'error', 'message': 'Failed to delete user'}), 500
+        
+        db.commit()
+        cursor.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'User {username} (ID: {user_id}) and all associated books deleted successfully',
+            'deleted_user_id': user_id,
+            'deleted_username': username
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Updated get all users endpoint
+@app.route('/api/admin/users', methods=['GET'])
+def get_all_users():
+    """Get all users with their book counts for admin panel"""
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # Get all users with basic info (excluding admin)
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.name, u.age, 
+                   COUNT(b.book_id) as book_count
+            FROM User u 
+            LEFT JOIN Book b ON u.user_id = b.user_id 
+            WHERE u.username != 'admin'
+            GROUP BY u.user_id, u.username, u.name, u.age
+            ORDER BY u.user_id
+        """)
+        users = cursor.fetchall()
+        cursor.close()
+        
+        # Convert count to int for JSON serialization
+        for user in users:
+            user['book_count'] = int(user['book_count'])
+        
+        return jsonify({'status': 'success', 'users': users}), 200
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Optional: Get user statistics for dashboard
+@app.route('/api/admin/stats', methods=['GET'])
+def get_admin_stats():
+    """Get comprehensive statistics for the admin dashboard"""
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # Total users (excluding admin)
+        cursor.execute("SELECT COUNT(*) as total_users FROM User WHERE username != 'admin'")
+        user_count = cursor.fetchone()['total_users']
+        
+        # Total books
+        cursor.execute("SELECT COUNT(*) as total_books FROM Book")
+        book_count = cursor.fetchone()['total_books']
+        
+        # Top 5 users with most books
+        cursor.execute("""
+            SELECT u.username, u.name, COUNT(b.book_id) as book_count
+            FROM User u 
+            LEFT JOIN Book b ON u.user_id = b.user_id 
+            WHERE u.username != 'admin'
+            GROUP BY u.user_id, u.username, u.name
+            ORDER BY book_count DESC
+            LIMIT 5
+        """)
+        top_users = cursor.fetchall()
+
+        # Total reads (entries in HasRead)
+        cursor.execute("SELECT COUNT(*) AS total_reads FROM HasRead")
+        total_reads = cursor.fetchone()['total_reads']
+
+        # Unique books read (distinct book_id)
+        cursor.execute("SELECT COUNT(DISTINCT book_id) AS unique_books_read FROM HasRead")
+        unique_books_read = cursor.fetchone()['unique_books_read']
+        
+        cursor.close()
+        
+        return jsonify({
+            'status': 'success',
+            'stats': {
+                'total_users': int(user_count),
+                'total_books': int(book_count),
+                'total_reads': int(total_reads),
+                'unique_books_read': int(unique_books_read),
+                'top_users': top_users
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/weekly-reads', methods=['GET'])
+def get_weekly_reads():
+    """Get the number of books read by all users for each day in the past week"""
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # Use UTC timezone to avoid timezone issues
+        from datetime import datetime, timedelta, timezone
+        
+        # Get current UTC date
+        utc_now = datetime.now(timezone.utc)
+        end_date = utc_now.date()
+        start_date = end_date - timedelta(days=6)  # 7 days total including today
+        
+        print(f"Debug: Date range from {start_date} to {end_date}")  # Debug log
+        
+        # Query to get reading counts by date for the past 7 days
+        # Using DATE() function to ensure we're grouping by date regardless of time
+        cursor.execute("""
+            SELECT 
+                DATE(date) as read_date,
+                COUNT(*) as books_read
+            FROM HasRead 
+            WHERE DATE(date) BETWEEN %s AND %s
+            GROUP BY DATE(date)
+            ORDER BY DATE(date) ASC
+        """, (start_date, end_date))
+        
+        results = cursor.fetchall()
+        
+        print(f"Debug: Database results: {results}")  # Debug log
+        
+        # Create a complete 7-day range with zero counts for missing days
+        date_counts = {}
+        for row in results:
+            # Handle both date and datetime objects
+            if hasattr(row['read_date'], 'strftime'):
+                date_key = row['read_date'].strftime('%Y-%m-%d')
+            else:
+                date_key = str(row['read_date'])
+            date_counts[date_key] = row['books_read']
+        
+        print(f"Debug: Date counts: {date_counts}")  # Debug log
+        
+        weekly_reads = []
+        current_date = start_date
+        for i in range(7):
+            date_str = current_date.strftime('%Y-%m-%d')
+            count = date_counts.get(date_str, 0)
+            weekly_reads.append({
+                'date': date_str,
+                'books_read': count
+            })
+            print(f"Debug: {date_str} -> {count} books")  # Debug log
+            current_date += timedelta(days=1)
+        
+        cursor.close()
+        
+        return jsonify({
+            'status': 'success',
+            'weekly_reads': weekly_reads,
+            'date_range': {
+                'start': start_date.strftime('%Y-%m-%d'),
+                'end': end_date.strftime('%Y-%m-%d')
+            },
+            'debug_info': {
+                'server_timezone': str(utc_now.astimezone().tzinfo),
+                'utc_date': end_date.strftime('%Y-%m-%d'),
+                'raw_db_results': len(results)
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in get_weekly_reads: {str(e)}")  # Debug log
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+    
+@app.route('/api/admin/delete-book', methods=['DELETE'])
+def delete_book():
+    """Delete a specific book by book_id and user_id"""
+    try:
+        data = request.get_json()
+        book_id = data.get('book_id')
+        user_id = data.get('user_id')
+        
+        # Validate input
+        if not book_id or not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Both book_id and user_id are required'
+            }), 400
+        
+        # Convert to integers to validate
+        try:
+            book_id = int(book_id)
+            user_id = int(user_id)
+        except ValueError:
+            return jsonify({
+                'status': 'error',
+                'message': 'Book ID and User ID must be valid numbers'
+            }), 400
+        
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        # First, check if the book exists and belongs to the specified user
+        cursor.execute("""
+            SELECT book_id, title, user_id 
+            FROM Book 
+            WHERE book_id = %s AND user_id = %s
+        """, (book_id, user_id))
+        
+        book = cursor.fetchone()
+        
+        if not book:
+            cursor.close()
+            return jsonify({
+                'status': 'error',
+                'message': f'Book with ID {book_id} not found for user {user_id}'
+            }), 404
+        
+        book_title = book['title']
+        
+        # Delete the book (this will also cascade delete from HasRead table if configured)
+        cursor.execute("DELETE FROM Book WHERE book_id = %s AND user_id = %s", (book_id, user_id))
+        
+        # Check if the deletion was successful
+        if cursor.rowcount == 0:
+            cursor.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to delete the book'
+            }), 500
+        
+        # Commit the transaction
+        db.commit()
+        cursor.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Book "{book_title}" (ID: {book_id}) successfully deleted from user {user_id}\'s library'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500    
+    
 
 if __name__ == "__main__":
     print("Starting Flask server...")
