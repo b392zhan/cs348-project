@@ -35,18 +35,23 @@ Books in the library can be filtered by their page length. When a user uses this
 
 ## Advanced Features
 📊 Author Statistics
+
 View detailed statistics about your top authors including number of books read, average page length, and identify your shortest/longest reads from each author.
 
 📅 Reading History Timeline
+
 Track your reading journey with a chronological view of all books you've read, including dates and your personal reviews.
 
 🎯 Reading Challenges
+
 Set and track personalized reading goals including annual targets, author-specific challenges, and page count milestones.
 
 🌍 Global Book Rankings
+
 Discover which books are most popular among all Shelfie users, with filters by year and genre.
 
 🔐 Age-Based Access Control
+
 Customizable parental controls that restrict mature content based on user age, with admin override capabilities.
 
 ## How to Generate Production Data
