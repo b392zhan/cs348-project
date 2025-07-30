@@ -75,17 +75,75 @@ ON DUPLICATE KEY UPDATE starred = VALUES(starred);
 DELETE FROM Starred WHERE user_id = '999' AND book_id = 456;
 
 -- Basic Query 5: Top 10 authors
+-- Get top 10 authors for user_id = 1
+WITH TopAuthors AS (
+    SELECT 
+        a.author_id,
+        a.name AS author_name,
+        COUNT(b.book_id) AS num_books
+    FROM Author a
+    JOIN WrittenBy wb ON a.author_id = wb.author_id
+    JOIN Book b ON b.book_id = wb.book_id
+    WHERE b.user_id = %s
+    GROUP BY a.author_id, a.name
+    ORDER BY num_books DESC
+    LIMIT 10
+),
+AuthorBooks AS (
+    SELECT 
+        ta.author_id,
+        ta.author_name,
+        b.book_id,
+        b.title,
+        b.page_length
+    FROM TopAuthors ta
+    JOIN WrittenBy wb ON ta.author_id = wb.author_id
+    JOIN Book b ON b.book_id = wb.book_id
+    WHERE b.user_id = 1 AND b.page_length IS NOT NULL
+),
+StatsPerAuthor AS (
+    SELECT 
+        ab.author_id,
+        ab.author_name,
+        COUNT(*) AS num_books_with_pages,
+        MIN(ab.page_length) AS min_pages,
+        MAX(ab.page_length) AS max_pages,
+        ROUND(AVG(ab.page_length), 1) AS avg_pages
+    FROM AuthorBooks ab
+    GROUP BY ab.author_id, ab.author_name
+),
+MinTitles AS (
+    SELECT DISTINCT ab.author_id, ab.title AS shortest_title
+    FROM AuthorBooks ab
+    JOIN (
+        SELECT author_id, MIN(page_length) AS min_pages
+        FROM AuthorBooks
+        GROUP BY author_id
+    ) mins ON ab.author_id = mins.author_id AND ab.page_length = mins.min_pages
+),
+MaxTitles AS (
+    SELECT DISTINCT ab.author_id, ab.title AS longest_title
+    FROM AuthorBooks ab
+    JOIN (
+        SELECT author_id, MAX(page_length) AS max_pages
+        FROM AuthorBooks
+        GROUP BY author_id
+    ) maxs ON ab.author_id = maxs.author_id AND ab.page_length = maxs.max_pages
+)
 SELECT 
-    a.author_id,
-    a.name AS author_name,
-    COUNT(b.book_id) AS num_books
-FROM Author a
-JOIN WrittenBy wb ON a.author_id = wb.author_id
-JOIN Book b ON b.book_id = wb.book_id
-WHERE b.user_id = 3
-GROUP BY a.author_id, a.name
-ORDER BY num_books DESC
-LIMIT 10;
+    s.author_id,
+    s.author_name,
+    s.num_books_with_pages,
+    s.min_pages,
+    s.max_pages,
+    s.avg_pages,
+    mt.shortest_title,
+    xt.longest_title
+FROM StatsPerAuthor s
+LEFT JOIN MinTitles mt ON s.author_id = mt.author_id
+LEFT JOIN MaxTitles xt ON s.author_id = xt.author_id
+ORDER BY s.num_books_with_pages DESC;
+
 
 -- Advanced Query 1: Mark as read
 WITH InsertData AS (
